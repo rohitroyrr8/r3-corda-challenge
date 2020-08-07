@@ -1,0 +1,24 @@
+
+
+------------------- RUNNING THE NODES ---------------------
+./gradlew clean deployNodes
+
+./build/nodes/runnodes
+
+------------------ RUN FLOW ----------------------
+
+Issue Flow - To Trader A
+
+start IssueMetal name: Gold, weight: 100, owner: "O=TraderA,L=New York,C=US"
+
+start IssueMetal name: Silver, weight: 200, owner: "O=TraderA,L=New York,C=US"
+
+
+Issue Flow - TO Trader B
+
+start IssueMetal name: Gold, weight: 100, owner: "O=TraderB,L=New York,C=US"
+
+start IssueMetal name: Silver, weight: 200, owner: "O=TraderB,L=New York,C=US"
+
+
+run vaultQuery contractStateType com.template.states.MetalState

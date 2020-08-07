@@ -1,7 +1,9 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="Run Template Client" type="Application" factoryName="Application" singleton="true">
+    <option name="ALTERNATIVE_JRE_PATH" value="1.8" />
+    <option name="ALTERNATIVE_JRE_PATH_ENABLED" value="true" />
     <option name="MAIN_CLASS_NAME" value="com.template.Client" />
-    <module name="com.template.clients.main" />
+    <module name="cordapp.clients.main" />
     <option name="PROGRAM_PARAMETERS" value="localhost:10006 user1 test" />
     <method v="2">
       <option name="Make" enabled="true" />

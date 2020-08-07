@@ -23,6 +23,7 @@ public class Client {
         // Create an RPC connection to the node.
         if (args.length != 3) throw new IllegalArgumentException("Usage: Client <node address> <rpc username> <rpc password>");
         final NetworkHostAndPort nodeAddress = parse(args[0]);
+        System.out.println("printing host and port "+ nodeAddress.toString());
         final String rpcUsername = args[1];
         final String rpcPassword = args[2];
         final CordaRPCClient client = new CordaRPCClient(nodeAddress);
@@ -31,6 +32,7 @@ public class Client {
         // Interact with the node.
         // For example, here we print the nodes on the network.
         final List<NodeInfo> nodes = proxy.networkMapSnapshot();
+        System.out.println("printing nodes");
         logger.info("{}", nodes);
     }
 }

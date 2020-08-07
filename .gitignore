@@ -57,6 +57,8 @@ lib/dokka.jar
 /out/
 /workflows/out/
 /contracts/out/
+/workflows/bin/
+/contracts/bin/
 clients/out/
 
 # mpeltonen/sbt-idea plugin
