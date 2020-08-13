@@ -1,6 +1,8 @@
 package com.template.contracts;
 
+import com.template.enums.PurchaseOrderStatus;
 import com.template.states.MetalState;
+import com.template.states.PurchaseOrderState;
 import net.corda.core.contracts.Command;
 import net.corda.core.contracts.CommandData;
 import net.corda.core.contracts.Contract;
@@ -21,7 +23,7 @@ import java.util.List;
  */
 public class PurchaseOrderContract implements Contract {
     // This is used to identify our contract when building a transaction.
-    public static final String CID = "com.template.contracts.MetalContract";
+    public static final String CID = "com.template.contracts.PurchaseOrderContract";
 
     // A transaction is valid if the verify() function of the contract of all the transaction's input and output states
     // does not throw an exception.
@@ -38,47 +40,117 @@ public class PurchaseOrderContract implements Contract {
             // ISSUE TRANSACTION LOGIC
 
             // 1. Shape Rule
-            if(tx.getInputStates().size() != 0) { throw new IllegalArgumentException("Issue cannot have input states."); }
-            if(tx.getOutputStates().size() != 1) { throw new IllegalArgumentException("Issue cannot have more than one states."); }
+            if(tx.getInputStates().size() != 0) { throw new IllegalArgumentException("Purchase Order cannot have input states."); }
+            if(tx.getOutputStates().size() != 1) { throw new IllegalArgumentException("Purchase Order cannot have more than one states."); }
 
             // 2. Content Rule
             ContractState outputState = tx.getOutput(0);
-            if(!(outputState instanceof MetalState)) {throw new IllegalArgumentException("Output must be metal state."); }
+            if(!(outputState instanceof PurchaseOrderState)) {throw new IllegalArgumentException("Output must be purchase order state."); }
 
-            MetalState metalState = (MetalState) outputState;
-            if(!metalState.getName().equals("gold") && !metalState.getName().equals("silver")) { throw new IllegalArgumentException("Metal can only be Gold or Silver."); }
+            PurchaseOrderState state = (PurchaseOrderState) outputState;
+//            if(!state.getName().equals("gold") && !metalState.getName().equals("silver")) { throw new IllegalArgumentException("Metal can only be Gold or Silver."); }
 
             // 3. Signer Rule
-            Party issuer = metalState.getIssuer();
-            PublicKey issuerKey = issuer.getOwningKey();
+            Party buyer = state.getBuyer();
+            PublicKey issuerKey = buyer.getOwningKey();
 
-            if(!requiredSigners.contains(issuerKey)) {throw new IllegalArgumentException("Issuer must sign the transaction."); }
+            if(!requiredSigners.contains(issuerKey)) {throw new IllegalArgumentException("Authorised Party must sign the transaction."); }
         }
 
         else if(commandData instanceof ApprovePurchaseOrder) {
             // ISSUE TRANSACTION LOGIC
 
             // 1. Shape Rule
-            if(tx.getInputStates().size() != 1) { throw new IllegalArgumentException("Transfer transaction must have one input state only."); }
-            if(tx.getOutputStates().size() != 1) { throw new IllegalArgumentException("Transfer transaction must have one output state only"); }
+            if(tx.getInputStates().size() != 1) { throw new IllegalArgumentException("Purchase Order must have one input state only."); }
+            if(tx.getOutputStates().size() != 1) { throw new IllegalArgumentException("Purchase Order must have one output state only"); }
 
             // 2. Content Rule
             ContractState inputState = tx.getInput(0);
             ContractState outputState = tx.getOutput(0);
 
-            if(!(outputState instanceof MetalState)) {throw new IllegalArgumentException("Output must be metal state."); }
+            PurchaseOrderState state = (PurchaseOrderState) inputState;
+            if(state.getStatus().equals(PurchaseOrderStatus.Rejected.toString())) { throw new IllegalArgumentException("Selected order is already approved"); }
 
-            MetalState metalState = (MetalState) inputState;
-            if(!metalState.getName().equals("gold") && !metalState.equals("silver")) { throw new IllegalArgumentException("Metal can only be Gold or Silver."); }
+            if(!(outputState instanceof PurchaseOrderState)) {throw new IllegalArgumentException("Output must be metal state."); }
 
             // 3. Signer Rule
-            Party owner = metalState.getOwner();
-            PublicKey issuerKey = owner.getOwningKey();
+            Party seller = state.getSeller();
+            PublicKey issuerKey = seller.getOwningKey();
 
-            if(!requiredSigners.contains(issuerKey)) {throw new IllegalArgumentException("Owner must sign the transaction."); }
+            if(!requiredSigners.contains(issuerKey)) {throw new IllegalArgumentException("Authorised Party must sign the transaction."); }
+        }
+
+        else if(commandData instanceof RejectPurchaseOrder) {
+
+            // 1. Shape Rule
+            if(tx.getInputStates().size() != 1) { throw new IllegalArgumentException("Purchase Order must have one input state only."); }
+            if(tx.getOutputStates().size() != 1) { throw new IllegalArgumentException("Purchase Order must have one output state only"); }
+
+            // 2. Content Rule
+            ContractState inputState = tx.getInput(0);
+            ContractState outputState = tx.getOutput(0);
+
+            PurchaseOrderState state = (PurchaseOrderState) inputState;
+            if(state.getStatus().equals(PurchaseOrderStatus.Rejected.toString())) { throw new IllegalArgumentException("Selected order is already rejected"); }
+
+            if(!(outputState instanceof PurchaseOrderState)) {throw new IllegalArgumentException("Output must be purchase order state."); }
+
+            // 3. Signer Rule
+            Party seller = state.getSeller();
+            PublicKey issuerKey = seller.getOwningKey();
+
+            if(!requiredSigners.contains(issuerKey)) {throw new IllegalArgumentException("Authorised Party must sign the transaction."); }
+        }
+
+        else if(commandData instanceof MarkAsReceivedPurchaseOrder) {
+            // ISSUE TRANSACTION LOGIC
+
+            // 1. Shape Rule
+            if(tx.getInputStates().size() != 1) { throw new IllegalArgumentException("Purchase Order must have one input state only."); }
+            if(tx.getOutputStates().size() != 1) { throw new IllegalArgumentException("Purchase Order must have one output state only"); }
+
+            // 2. Content Rule
+            ContractState inputState = tx.getInput(0);
+            ContractState outputState = tx.getOutput(0);
+
+            PurchaseOrderState state = (PurchaseOrderState) inputState;
+            if(!state.getStatus().equals(PurchaseOrderStatus.Approved.toString())) { throw new IllegalArgumentException("Selected order is not approved yet."); }
+            if(state.getStatus().equals(PurchaseOrderStatus.Received.toString())) { throw new IllegalArgumentException("Selected order is already marked as received"); }
+
+            if(!(outputState instanceof PurchaseOrderState)) {throw new IllegalArgumentException("Output must be purchase order state."); }
+
+            // 3. Signer Rule
+            Party buyer = state.getBuyer();
+            PublicKey issuerKey = buyer.getOwningKey();
+
+            if(!requiredSigners.contains(issuerKey)) {throw new IllegalArgumentException("Authorised Party must sign the transaction."); }
+        }
+
+        else if(commandData instanceof PayEMIForPurchasedOrder) {
+            // ISSUE TRANSACTION LOGIC
+
+            // 1. Shape Rule
+            if(tx.getInputStates().size() != 1) { throw new IllegalArgumentException("Purchase Order must have one input state only."); }
+            if(tx.getOutputStates().size() != 1) { throw new IllegalArgumentException("Purchase Order must have one output state only"); }
+
+            // 2. Content Rule
+            ContractState inputState = tx.getInput(0);
+            ContractState outputState = tx.getOutput(0);
+
+            PurchaseOrderState state = (PurchaseOrderState) inputState;
+            if(!state.getStatus().equals(PurchaseOrderStatus.Received.toString())) { throw new IllegalArgumentException("Cannot perform this action right now."); }
+
+            if(!(outputState instanceof PurchaseOrderState)) {throw new IllegalArgumentException("Output must be purchase order state."); }
+
+            // 3. Signer Rule
+            Party buyer = state.getBuyer();
+            PublicKey issuerKey = buyer.getOwningKey();
+
+            if(!requiredSigners.contains(issuerKey)) {throw new IllegalArgumentException("Authorised Party must sign the transaction."); }
         }
         else {
-            throw new IllegalArgumentException(("Invalid Command..."));
+            System.out.println(commandData.getClass().getSimpleName());
+            throw new IllegalArgumentException(("Invalid Command..." + commandData.getClass().getSimpleName()));
         }
     }
 
@@ -86,5 +158,5 @@ public class PurchaseOrderContract implements Contract {
     public static class ApprovePurchaseOrder implements CommandData {};
     public static class RejectPurchaseOrder implements CommandData {};
     public static class MarkAsReceivedPurchaseOrder implements CommandData {};
-    public static class PayEMIToPurchaseOrder implements CommandData {};
+    public static class PayEMIForPurchasedOrder implements CommandData {};
 }

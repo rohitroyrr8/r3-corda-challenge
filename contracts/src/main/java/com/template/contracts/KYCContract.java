@@ -11,6 +11,7 @@ import net.corda.core.identity.Party;
 import net.corda.core.transactions.LedgerTransaction;
 import org.jetbrains.annotations.NotNull;
 
+import javax.xml.transform.sax.SAXSource;
 import java.security.PublicKey;
 import java.util.List;
 
@@ -27,8 +28,6 @@ public class KYCContract implements Contract {
     // This is used to identify our contract when building a transaction.
     public static final String CID = "com.template.contracts.KYCContract";
 
-    // A transaction is valid if the verify() function of the contract of all the transaction's input and output states
-    // does not throw an exception.
     @Override
     public void verify(@NotNull LedgerTransaction tx) throws IllegalArgumentException {
         if(tx.getCommands().size() != 1) {throw new IllegalArgumentException("Transaction must have one command only."); }
@@ -57,17 +56,19 @@ public class KYCContract implements Contract {
             if(kycState.getIncorporationPlace() == null) { throw new IllegalArgumentException("Incorporation Place is required."); }
             if(kycState.getCibilScore() <= 0) { throw new IllegalArgumentException("CIBIL Score is required."); }
 
-
+            if (kycState.getCibilScore() < 750) {
+                throw new IllegalArgumentException("KYC is rejected as CIBIL Score is less than 750.");
+            }
             // Signer Rule
-            Party submittedBy = kycState.getSubmittedBy();
+            Party submittedBy = kycState.getOwner();
             PublicKey submitterKey = submittedBy.getOwningKey();
 
             if(!requiredSigners.contains(submitterKey)) { throw new IllegalArgumentException("Submitter Key is required."); }
         }
 
         else if(commandData instanceof ApproveKYC) {
-            if(tx.getInputStates().size() != 1) { throw new IllegalArgumentException("Submit KYC must have one input state."); }
-            if(tx.getOutputStates().size() != 1) { throw new IllegalArgumentException("Submit KYC must have one output state."); }
+            if(tx.getInputStates().size() != 1) { throw new IllegalArgumentException("Approve KYC must have one input state."+tx.getInputStates().size()); }
+            if(tx.getOutputStates().size() != 1) { throw new IllegalArgumentException("Approve KYC must have one output state."); }
 
             // 2. Content Rule
             ContractState inputState = tx.getInput(0);
@@ -79,16 +80,16 @@ public class KYCContract implements Contract {
             if(kycState.getStatus() == KYCStatus.Approved.toString()) { throw new IllegalArgumentException("KYC is already approved."); }
 
             // Signer Rule
-            Party signingParty = kycState.getApprovedOrRejectedBy();
+            Party signingParty = kycState.getLender();
             PublicKey signingKey = signingParty.getOwningKey();
 
-            if(!requiredSigners.contains(signingParty)) { throw new IllegalArgumentException("Authorised Party must sign the transaction."); }
+            if(!requiredSigners.contains(signingKey)) { throw new IllegalArgumentException("Authorised Party must sign the transaction."); }
 
         }
 
         else if(commandData instanceof RejectKYC) {
-            if(tx.getInputStates().size() != 1) { throw new IllegalArgumentException("Submit KYC must have one input state."); }
-            if(tx.getOutputStates().size() != 1) { throw new IllegalArgumentException("Submit KYC must have one output state."); }
+            if(tx.getInputStates().size() != 1) { throw new IllegalArgumentException("Reject KYC must have one input state." + tx.getInputStates().size()); }
+            if(tx.getOutputStates().size() != 1) { throw new IllegalArgumentException("Reject KYC must have one output state."); }
 
             // 2. Content Rule
             ContractState inputState = tx.getInput(0);
@@ -100,20 +101,17 @@ public class KYCContract implements Contract {
             if(kycState.getStatus() == KYCStatus.Rejected.toString()) { throw new IllegalArgumentException("KYC is already rejected."); }
 
             // Signer Rule
-            Party signingParty = kycState.getApprovedOrRejectedBy();
+            Party signingParty = kycState.getLender();
             PublicKey signingKey = signingParty.getOwningKey();
 
-            if(!requiredSigners.contains(signingParty)) { throw new IllegalArgumentException("Authorised Party must sign the transaction."); }
+            if(!requiredSigners.contains(signingKey)) { throw new IllegalArgumentException("Authorised Party must sign the transaction."); }
 
         }
 
         else {
-            throw new IllegalArgumentException(("Invalid Command..."));
+            throw new IllegalArgumentException("Invalid Command...");
         }
     }
-
-    public static class Issue implements CommandData {};
-    public static class Transfer implements CommandData {};
 
     public static class SubmitKYC implements CommandData {};
     public static class ApproveKYC implements CommandData {};

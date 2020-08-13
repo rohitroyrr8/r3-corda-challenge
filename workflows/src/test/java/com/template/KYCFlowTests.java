@@ -3,6 +3,7 @@ package com.template;
 import com.google.common.collect.ImmutableList;
 import com.template.contracts.KYCContract;
 import com.template.flows.ApproveKYC;
+import com.template.flows.RejectKYC;
 import com.template.flows.SubmitKYC;
 import com.template.states.KYCState;
 import net.corda.core.concurrent.CordaFuture;
@@ -56,8 +57,8 @@ public class KYCFlowTests {
         assertEquals(1, signedTransaction.getTx().getOutputs().size());
         KYCState output = signedTransaction.getTx().outputsOfType(KYCState.class).get(0);
 
-        assertEquals(buyer.getInfo().getLegalIdentities().get(0), output.getSubmittedBy());
-        assertEquals(lender.getInfo().getLegalIdentities().get(0), output.getApprovedOrRejectedBy());
+        assertEquals(buyer.getInfo().getLegalIdentities().get(0), output.getOwner());
+        assertEquals(lender.getInfo().getLegalIdentities().get(0), output.getLender());
     }
 
     @Test
@@ -81,15 +82,17 @@ public class KYCFlowTests {
     /** APPROVE KYC FLOW TESTS **/
 
     @Test
-    public void transactionHasOneInputAndOneOutput() throws Exception {
-        SubmitKYC submitKYCFlow = new SubmitKYC(4843035, "BPZPR4763F", "SFSEE5323K", 345345345, "Google Inc.",
+    public void approveKYCTransactionHasOneInputAndOneOutput() throws Exception {
+        SubmitKYC submitKYCFlow = new SubmitKYC(4843035, "BPZPR4763F", "SFSEE5323K",
+                345345345, "Google Inc.",
                 new Date(), "Gurgaon", 760, lender.getInfo().getLegalIdentities().get(0));
-        ApproveKYC approveKYCFlow = new ApproveKYC("234234");
+
+        ApproveKYC approveKYCFlow = new ApproveKYC("1234");
 
         CordaFuture<SignedTransaction> submitKYCFuture = buyer.startFlow(submitKYCFlow);
         setup();
 
-        CordaFuture<SignedTransaction> approveKYCFuture = buyer.startFlow(approveKYCFlow);
+        CordaFuture<SignedTransaction> approveKYCFuture = lender.startFlow(approveKYCFlow);
         setup();
 
         SignedTransaction signedTransaction = approveKYCFuture.get();
@@ -97,6 +100,29 @@ public class KYCFlowTests {
         assertEquals(1, signedTransaction.getTx().getInputs().size());
         assertEquals(1, signedTransaction.getTx().getOutputs().size());
 
+    }
+
+    @Test
+    public void transactionHasOneApproveKYCCommandWithLenderAsSigner() throws Exception {
+        SubmitKYC submitKYCFlow = new SubmitKYC(4843035, "BPZPR4763F", "SFSEE5323K",
+                345345345, "Google Inc.",
+                new Date(), "Gurgaon", 760, lender.getInfo().getLegalIdentities().get(0));
+
+        RejectKYC approveKYCFlow = new RejectKYC("1234");
+
+        CordaFuture<SignedTransaction> submitKYCFuture = buyer.startFlow(submitKYCFlow);
+        setup();
+
+        CordaFuture<SignedTransaction> approveKYCFuture = lender.startFlow(approveKYCFlow);
+        setup();
+
+        SignedTransaction signedTransaction = approveKYCFuture.get();
+
+        assertEquals(1, signedTransaction.getTx().getCommands().size());
+        Command command = signedTransaction.getTx().getCommands().get(0);
+
+        assert (command.getValue() instanceof KYCContract.RejectKYC);
+        assertTrue(command.getSigners().contains(lender.getInfo().getLegalIdentities().get(0).getOwningKey()));
     }
 //
 //    /****************** TRANSFER METAL FLOW TESTS ********************/

@@ -6,7 +6,6 @@ import net.corda.core.contracts.ContractState;
 import net.corda.core.identity.AbstractParty;
 import net.corda.core.identity.Party;
 
-import java.security.PublicKey;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
@@ -28,10 +27,10 @@ public class KYCState implements ContractState {
     private String status;
     private Date createdOn;
 
-    private Party submittedBy;
-    private Party approvedOrRejectedBy;
+    private Party owner;
+    private Party lender;
 
-    public KYCState(String identifier, String virtualOrganisation, String partyName, int aadharNumber, String panNumber, String companyPanNumber, int incorporationNumber, String companyName, Date incorporationDate, String incorporationPlace, int cibilScore, int creditLimit, String status, Date createdOn, Party submittedBy, Party approvedOrRejectedBy) {
+    public KYCState(String identifier, String virtualOrganisation, String partyName, int aadharNumber, String panNumber, String companyPanNumber, int incorporationNumber, String companyName, Date incorporationDate, String incorporationPlace, int cibilScore, int creditLimit, String status, Date createdOn, Party owner, Party lender) {
         this.identifier = identifier;
         this.virtualOrganisation = virtualOrganisation;
         this.partyName = partyName;
@@ -46,8 +45,8 @@ public class KYCState implements ContractState {
         this.creditLimit = creditLimit;
         this.status = status;
         this.createdOn = createdOn;
-        this.submittedBy = submittedBy;
-        this.approvedOrRejectedBy = approvedOrRejectedBy;
+        this.owner = owner;
+        this.lender = lender;
     }
 
     public String getIdentifier() {
@@ -106,16 +105,16 @@ public class KYCState implements ContractState {
         return createdOn;
     }
 
-    public Party getSubmittedBy() {
-        return submittedBy;
+    public Party getOwner() {
+        return owner;
     }
 
-    public Party getApprovedOrRejectedBy() {
-        return approvedOrRejectedBy;
+    public Party getLender() {
+        return lender;
     }
 
     @Override
     public List<AbstractParty> getParticipants() {
-        return Arrays.asList(approvedOrRejectedBy);
+        return Arrays.asList(owner, lender);
     }
 }

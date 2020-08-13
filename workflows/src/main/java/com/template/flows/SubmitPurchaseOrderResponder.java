@@ -7,18 +7,19 @@ import net.corda.core.transactions.SignedTransaction;
 // ******************
 // * Issue Metal Responder flow *
 // ******************
-@InitiatedBy(Login.class)
-public class LoginResponder extends FlowLogic<SignedTransaction> {
+@InitiatedBy(SubmitPurchaseOrder.class)
+public class SubmitPurchaseOrderResponder extends FlowLogic<SignedTransaction> {
     private FlowSession otherPartySession;
 
-    public LoginResponder(FlowSession otherPartySession) {
+    public SubmitPurchaseOrderResponder(FlowSession otherPartySession) {
         this.otherPartySession = otherPartySession;
     }
 
     @Suspendable
     @Override
     public SignedTransaction call() throws FlowException {
-        System.out.println("User logged-in successfully.");
+        System.out.println("Purchase order submitted..");
+
         return subFlow(new ReceiveFinalityFlow(otherPartySession));
 
     }

@@ -1,34 +1,33 @@
 package com.template.flows;
 
 import co.paralleluniverse.fibers.Suspendable;
-import com.template.contracts.KYCContract;
-import com.template.contracts.MetalContract;
-import com.template.enums.KYCStatus;
-import com.template.states.KYCState;
-import com.template.states.MetalState;
-import com.template.utils.CommonUtils;
+import com.template.contracts.PurchaseOrderContract;
+import com.template.enums.PurchaseOrderStatus;
+import com.template.states.PurchaseOrderState;
 import net.corda.core.contracts.Command;
 import net.corda.core.flows.*;
 import net.corda.core.identity.Party;
 import net.corda.core.transactions.SignedTransaction;
 import net.corda.core.transactions.TransactionBuilder;
 import net.corda.core.utilities.ProgressTracker;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.Date;
 
 @InitiatingFlow
 @StartableByRPC
-public class SubmitKYC extends FlowLogic<SignedTransaction> {
-    private int aadharNumber;
-    private String panNumber;
-    private String companyPanNumber;
-    private int incorporationNumber;
+public class SubmitPurchaseOrder extends FlowLogic<SignedTransaction> {
+    private String identifier;
+    private String name;
+    private String model;
     private String companyName;
-    private Date incorporationDate;
-    private String incorporationPlace;
-    private int cibilScore;
+    private String color;
+    private String fuelType;
+    private Double rate;
+    private int quantity;
+    private Double amount;
+    private String username;
 
+    private Party seller;
     private Party lender;
 
     private final ProgressTracker.Step RETRIEVING_NOTARY = new ProgressTracker.Step("Retrieving the notary.");
@@ -45,57 +44,69 @@ public class SubmitKYC extends FlowLogic<SignedTransaction> {
             FINALISING_TRANSACTION
     );
 
-    public SubmitKYC(int aadharNumber, String panNumber, String companyPanNumber, int incorporationNumber,
-                     String companyName, Date incorporationDate, String incorporationPlace, int cibilScore,
-                     Party lender) {
-        this.aadharNumber = aadharNumber;
-        this.panNumber = panNumber;
-        this.companyPanNumber = companyPanNumber;
-        this.incorporationNumber = incorporationNumber;
+    public SubmitPurchaseOrder(String identifier, String name, String model, String companyName, String color, String fuelType, Double rate, int quantity, Double amount, String username, Party seller, Party lender) {
+        this.identifier = identifier;
+        this.name = name;
+        this.model = model;
         this.companyName = companyName;
-        this.incorporationDate = incorporationDate;
-        this.incorporationPlace = incorporationPlace;
-        this.cibilScore = cibilScore;
+        this.color = color;
+        this.fuelType = fuelType;
+        this.rate = rate;
+        this.quantity = quantity;
+        this.amount = amount;
+        this.username = username;
+        this.seller = seller;
         this.lender = lender;
     }
 
-    public int getAadharNumber() {
-        return aadharNumber;
+    public String getIdentifier() {
+        return identifier;
     }
 
-    public String getPanNumber() {
-        return panNumber;
+    public String getName() {
+        return name;
     }
 
-    public String getCompanyPanNumber() {
-        return companyPanNumber;
-    }
-
-    public int getIncorporationNumber() {
-        return incorporationNumber;
+    public String getModel() {
+        return model;
     }
 
     public String getCompanyName() {
         return companyName;
     }
 
-    public Date getIncorporationDate() {
-        return incorporationDate;
+    public String getColor() {
+        return color;
     }
 
-    public String getIncorporationPlace() {
-        return incorporationPlace;
+    public String getFuelType() {
+        return fuelType;
     }
 
-    public int getCibilScore() {
-        return cibilScore;
+    public Double getRate() {
+        return rate;
+    }
+
+    public int getQuantity() {
+        return quantity;
+    }
+
+    public Double getAmount() {
+        return amount;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public Party getSeller() {
+        return seller;
     }
 
     public Party getLender() {
         return lender;
     }
 
-    @Nullable
     @Override
     public ProgressTracker getProgressTracker() {
         return progressTracker;
@@ -109,14 +120,10 @@ public class SubmitKYC extends FlowLogic<SignedTransaction> {
         progressTracker.setCurrentStep(RETRIEVING_NOTARY);
         Party notary = getServiceHub().getNetworkMapCache().getNotaryIdentities().get(0);
 
-        //String identifier = CommonUtils.randomAlphaNumeric(16);
-        String identifier = "1234";
-        KYCState outputState = new KYCState(identifier, "Lender",
-                "Lender", aadharNumber, panNumber, companyPanNumber, incorporationNumber,
-                companyName, incorporationDate, incorporationPlace, cibilScore, 0, KYCStatus.Submitted.toString(),
-                new Date(), getOurIdentity(), lender);
+        PurchaseOrderState outputState = new PurchaseOrderState(identifier, name, model, companyName, color, fuelType, rate,
+                quantity, amount, username, new Date(), PurchaseOrderStatus.Submitted.toString(), 0d, getOurIdentity(), seller, lender);
 
-        Command command = new Command(new KYCContract.SubmitKYC(), getOurIdentity().getOwningKey());
+        Command command = new Command(new PurchaseOrderContract.SubmitPurchaseOrder(), getOurIdentity().getOwningKey());
 
         // generating transaction
         progressTracker.setCurrentStep(GENERATING_TRANSACTION);
@@ -130,10 +137,11 @@ public class SubmitKYC extends FlowLogic<SignedTransaction> {
 
         // counter party session
         progressTracker.setCurrentStep(COUNTER_PARTY_SESSION);
-        FlowSession otherPartySession = initiateFlow(lender);
+        FlowSession sellerPartySession = initiateFlow(seller);
+        FlowSession lenderPartySession = initiateFlow(lender);
 
         // finalising transaction
         progressTracker.setCurrentStep(FINALISING_TRANSACTION);
-        return subFlow(new FinalityFlow(signedTransaction, otherPartySession));
+        return subFlow(new FinalityFlow(signedTransaction, sellerPartySession, lenderPartySession));
     }
 }

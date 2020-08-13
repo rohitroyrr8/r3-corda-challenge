@@ -4,21 +4,18 @@ import co.paralleluniverse.fibers.Suspendable;
 import net.corda.core.flows.*;
 import net.corda.core.transactions.SignedTransaction;
 
-// ******************
-// * Issue Metal Responder flow *
-// ******************
-@InitiatedBy(Login.class)
-public class LoginResponder extends FlowLogic<SignedTransaction> {
+@InitiatedBy(RejectPurchaseOrder.class)
+public class RejectPurchaseOrderResponder extends FlowLogic<SignedTransaction> {
     private FlowSession otherPartySession;
 
-    public LoginResponder(FlowSession otherPartySession) {
+    public RejectPurchaseOrderResponder(FlowSession otherPartySession) {
         this.otherPartySession = otherPartySession;
     }
 
     @Suspendable
     @Override
     public SignedTransaction call() throws FlowException {
-        System.out.println("User logged-in successfully.");
+        System.out.println("Purchase Order rejected.");
         return subFlow(new ReceiveFinalityFlow(otherPartySession));
 
     }

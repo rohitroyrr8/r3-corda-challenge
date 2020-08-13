@@ -1,5 +1,6 @@
 package com.template.states;
 
+import com.template.contracts.MetalContract;
 import com.template.contracts.PurchaseOrderContract;
 import net.corda.core.contracts.BelongsToContract;
 import net.corda.core.contracts.ContractState;
@@ -18,21 +19,20 @@ public class PurchaseOrderState implements ContractState {
     private String companyName;
     private String color;
     private String fuelType;
-    private int rate;
+    private Double rate;
     private int quantity;
-    private int amount;
-    private boolean isReceived;
+    private Double amount;
+
+    private String username;
     private Date createdOn;
     private String status;
+    private Double amountPaid;
 
-    private int period;
-    private int interestRate;
-    private int paidAmountByBuyer;
+    private Party seller;
+    private Party buyer;
+    private Party lender;
 
-    private Party issuer;
-    private Party owner;
-
-    public PurchaseOrderState(String identifier, String name, String model, String companyName, String color, String fuelType, int rate, int quantity, int amount, boolean isReceived, Date createdOn, String status, int period, int interestRate, int paidAmountByBuyer, Party issuer, Party owner) {
+    public PurchaseOrderState(String identifier, String name, String model, String companyName, String color, String fuelType, Double rate, int quantity, Double amount, String username, Date createdOn, String status, Double amountPaid, Party buyer, Party seller, Party lender) {
         this.identifier = identifier;
         this.name = name;
         this.model = model;
@@ -42,14 +42,17 @@ public class PurchaseOrderState implements ContractState {
         this.rate = rate;
         this.quantity = quantity;
         this.amount = amount;
-        this.isReceived = isReceived;
+        this.username = username;
         this.createdOn = createdOn;
         this.status = status;
-        this.period = period;
-        this.interestRate = interestRate;
-        this.paidAmountByBuyer = paidAmountByBuyer;
-        this.issuer = issuer;
-        this.owner = owner;
+        this.amountPaid = amountPaid;
+        this.buyer = buyer;
+        this.seller = seller;
+        this.lender = lender;
+    }
+
+    public String getIdentifier() {
+        return identifier;
     }
 
     public String getName() {
@@ -72,7 +75,7 @@ public class PurchaseOrderState implements ContractState {
         return fuelType;
     }
 
-    public int getRate() {
+    public Double getRate() {
         return rate;
     }
 
@@ -80,20 +83,12 @@ public class PurchaseOrderState implements ContractState {
         return quantity;
     }
 
-    public int getAmount() {
+    public Double getAmount() {
         return amount;
     }
 
-    public Party getIssuer() {
-        return issuer;
-    }
-
-    public Party getOwner() {
-        return owner;
-    }
-
-    public boolean isReceived() {
-        return isReceived;
+    public String getUsername() {
+        return username;
     }
 
     public Date getCreatedOn() {
@@ -104,24 +99,24 @@ public class PurchaseOrderState implements ContractState {
         return status;
     }
 
-    public int getPeriod() {
-        return period;
+    public Double getAmountPaid() {
+        return amountPaid;
     }
 
-    public int getInterestRate() {
-        return interestRate;
+    public Party getSeller() {
+        return seller;
     }
 
-    public int getPaidAmountByBuyer() {
-        return paidAmountByBuyer;
+    public Party getBuyer() {
+        return buyer;
     }
 
-    public String getIdentifier() {
-        return identifier;
+    public Party getLender() {
+        return lender;
     }
 
     @Override
     public List<AbstractParty> getParticipants() {
-        return Arrays.asList(issuer, owner);
+        return Arrays.asList(buyer, seller, lender);
     }
 }
