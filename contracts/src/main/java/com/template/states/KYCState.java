@@ -13,9 +13,8 @@ import java.util.List;
 @BelongsToContract(KYCContract.class)
 public class KYCState implements ContractState {
     private String identifier;
-    private String virtualOrganisation;
-    private String partyName;
-    private int aadharNumber;
+    private String username;
+    private String aadharNumber;
     private String panNumber;
     private String companyPanNumber;
     private int incorporationNumber;
@@ -23,6 +22,7 @@ public class KYCState implements ContractState {
     private Date incorporationDate;
     private String incorporationPlace;
     private int cibilScore;
+
     private int creditLimit;
     private String status;
     private Date createdOn;
@@ -30,10 +30,9 @@ public class KYCState implements ContractState {
     private Party owner;
     private Party lender;
 
-    public KYCState(String identifier, String virtualOrganisation, String partyName, int aadharNumber, String panNumber, String companyPanNumber, int incorporationNumber, String companyName, Date incorporationDate, String incorporationPlace, int cibilScore, int creditLimit, String status, Date createdOn, Party owner, Party lender) {
+    public KYCState(String identifier, String username, String aadharNumber, String panNumber, String companyPanNumber, int incorporationNumber, String companyName, Date incorporationDate, String incorporationPlace, int cibilScore, int creditLimit, String status, Date createdOn, Party owner, Party lender) {
         this.identifier = identifier;
-        this.virtualOrganisation = virtualOrganisation;
-        this.partyName = partyName;
+        this.username = username;
         this.aadharNumber = aadharNumber;
         this.panNumber = panNumber;
         this.companyPanNumber = companyPanNumber;
@@ -53,15 +52,11 @@ public class KYCState implements ContractState {
         return identifier;
     }
 
-    public String getVirtualOrganisation() {
-        return virtualOrganisation;
+    public String getUsername() {
+        return username;
     }
 
-    public String getPartyName() {
-        return partyName;
-    }
-
-    public int getAadharNumber() {
+    public String getAadharNumber() {
         return aadharNumber;
     }
 

@@ -2,9 +2,9 @@ package com.template;
 
 import com.google.common.collect.ImmutableList;
 import com.template.contracts.KYCContract;
-import com.template.flows.ApproveKYC;
-import com.template.flows.RejectKYC;
-import com.template.flows.SubmitKYC;
+import com.template.flows.kyc.ApproveKYC;
+import com.template.flows.kyc.RejectKYC;
+import com.template.flows.kyc.SubmitKYC;
 import com.template.states.KYCState;
 import net.corda.core.concurrent.CordaFuture;
 import net.corda.core.contracts.Command;
@@ -47,9 +47,10 @@ public class KYCFlowTests {
 
     @Test
     public void transactionHasNoInputAndOneOutputStateAndHasCorrectParty() throws Exception {
-        SubmitKYC flow = new SubmitKYC(4843035, "BPZPR4763F", "SFSEE5323K", 345345345, "Google Inc.",
+        SubmitKYC submitKYCFlow = new SubmitKYC("KYC_1","rohitroy", "4843035", "BPZPR4763F", "SFSEE5323K",
+                345345345, "Google Inc.",
                 new Date(), "Gurgaon", 760, lender.getInfo().getLegalIdentities().get(0));
-        CordaFuture<SignedTransaction> signedTransactionCordaFuture = buyer.startFlow(flow);
+        CordaFuture<SignedTransaction> signedTransactionCordaFuture = buyer.startFlow(submitKYCFlow);
         setup();
         SignedTransaction signedTransaction = signedTransactionCordaFuture.get();
 
@@ -63,9 +64,10 @@ public class KYCFlowTests {
 
     @Test
     public void transactionHasCorrectContractWithOneSubmitKYCCommandAndBuyerAsSigner() throws Exception {
-        SubmitKYC flow = new SubmitKYC(4843035, "BPZPR4763F", "SFSEE5323K", 345345345, "Google Inc.",
+        SubmitKYC submitKYCFlow = new SubmitKYC("KYC_1","rohitroy", "4843035", "BPZPR4763F", "SFSEE5323K",
+                345345345, "Google Inc.",
                 new Date(), "Gurgaon", 760, lender.getInfo().getLegalIdentities().get(0));
-        CordaFuture<SignedTransaction> signedTransactionCordaFuture = buyer.startFlow(flow);
+        CordaFuture<SignedTransaction> signedTransactionCordaFuture = buyer.startFlow(submitKYCFlow);
         setup();
         SignedTransaction signedTransaction = signedTransactionCordaFuture.get();
 
@@ -83,11 +85,11 @@ public class KYCFlowTests {
 
     @Test
     public void approveKYCTransactionHasOneInputAndOneOutput() throws Exception {
-        SubmitKYC submitKYCFlow = new SubmitKYC(4843035, "BPZPR4763F", "SFSEE5323K",
+        SubmitKYC submitKYCFlow = new SubmitKYC("KYC_1","rohitroy", "4843035", "BPZPR4763F", "SFSEE5323K",
                 345345345, "Google Inc.",
                 new Date(), "Gurgaon", 760, lender.getInfo().getLegalIdentities().get(0));
 
-        ApproveKYC approveKYCFlow = new ApproveKYC("1234");
+        ApproveKYC approveKYCFlow = new ApproveKYC("KYC_1", buyer.getInfo().getLegalIdentities().get(0));
 
         CordaFuture<SignedTransaction> submitKYCFuture = buyer.startFlow(submitKYCFlow);
         setup();
@@ -104,11 +106,11 @@ public class KYCFlowTests {
 
     @Test
     public void transactionHasOneApproveKYCCommandWithLenderAsSigner() throws Exception {
-        SubmitKYC submitKYCFlow = new SubmitKYC(4843035, "BPZPR4763F", "SFSEE5323K",
+        SubmitKYC submitKYCFlow = new SubmitKYC("KYC_1","rohitroy", "4843035", "BPZPR4763F", "SFSEE5323K",
                 345345345, "Google Inc.",
                 new Date(), "Gurgaon", 760, lender.getInfo().getLegalIdentities().get(0));
 
-        RejectKYC approveKYCFlow = new RejectKYC("1234");
+        ApproveKYC approveKYCFlow = new ApproveKYC("KYC_1", buyer.getInfo().getLegalIdentities().get(0));
 
         CordaFuture<SignedTransaction> submitKYCFuture = buyer.startFlow(submitKYCFlow);
         setup();
@@ -121,47 +123,52 @@ public class KYCFlowTests {
         assertEquals(1, signedTransaction.getTx().getCommands().size());
         Command command = signedTransaction.getTx().getCommands().get(0);
 
-        assert (command.getValue() instanceof KYCContract.RejectKYC);
+        assert (command.getValue() instanceof KYCContract.ApproveKYC);
         assertTrue(command.getSigners().contains(lender.getInfo().getLegalIdentities().get(0).getOwningKey()));
     }
-//
-//    /****************** TRANSFER METAL FLOW TESTS ********************/
-//
-//    @Test
-//    public void transactionHasOneInputAndOneOutput() throws Exception {
-//        IssueMetal issueFlow = new IssueMetal("gold", 10, traderA.getInfo().getLegalIdentities().get(0));
-//        TransferMetal transferMetal = new TransferMetal("gold", 10, traderB.getInfo().getLegalIdentities().get(0));
-//
-//        CordaFuture<SignedTransaction> issueFuture = Mint.startFlow(issueFlow);
-//        setup();
-//
-//        CordaFuture<SignedTransaction> transferFuture = traderA.startFlow(transferMetal);
-//        setup();
-//
-//        SignedTransaction signedTransaction = transferFuture.get();
-//
-//        assertEquals(1, signedTransaction.getTx().getInputs().size());
-//        assertEquals(1, signedTransaction.getTx().getOutputs().size());
-//    }
-//
-//    @Test
-//    public void transactionHasOneTransferCommandWithOwnerAsSigner() throws Exception {
-//        IssueMetal issueFlow = new IssueMetal("gold", 10, traderA.getInfo().getLegalIdentities().get(0));
-//        TransferMetal transferMetal = new TransferMetal("gold", 10, traderB.getInfo().getLegalIdentities().get(0));
-//
-//        CordaFuture<SignedTransaction> issueFuture = Mint.startFlow(issueFlow);
-//        setup();
-//
-//        CordaFuture<SignedTransaction> transferFuture = traderA.startFlow(transferMetal);
-//        setup();
-//
-//        SignedTransaction signedTransaction = transferFuture.get();
-//
-//        assertEquals(1, signedTransaction.getTx().getCommands().size());
-//        Command command = signedTransaction.getTx().getCommands().get(0);
-//
-//        assert (command.getValue() instanceof MetalContract.Transfer);
-//        assertTrue(command.getSigners().contains(traderA.getInfo().getLegalIdentities().get(0).getOwningKey()));
-//
-//    }
+
+    /***************REJECT KYC TESTS *******************/
+    @Test
+    public void rejectKYCTransactionHasOneInputAndOneOutput() throws Exception {
+        SubmitKYC submitKYCFlow = new SubmitKYC("KYC_1","rohitroy", "4843035", "BPZPR4763F", "SFSEE5323K",
+                345345345, "Google Inc.",
+                new Date(), "Gurgaon", 760, lender.getInfo().getLegalIdentities().get(0));
+
+        RejectKYC rejectKYCFlow = new RejectKYC("KYC_1", buyer.getInfo().getLegalIdentities().get(0));
+
+        CordaFuture<SignedTransaction> submitKYCFuture = buyer.startFlow(submitKYCFlow);
+        setup();
+
+        CordaFuture<SignedTransaction> approveKYCFuture = lender.startFlow(rejectKYCFlow);
+        setup();
+
+        SignedTransaction signedTransaction = approveKYCFuture.get();
+
+        assertEquals(1, signedTransaction.getTx().getInputs().size());
+        assertEquals(1, signedTransaction.getTx().getOutputs().size());
+
+    }
+
+    @Test
+    public void rejectTransactionHasOneApproveKYCCommandWithLenderAsSigner() throws Exception {
+        SubmitKYC submitKYCFlow = new SubmitKYC("KYC_1","rohitroy", "4843035", "BPZPR4763F", "SFSEE5323K",
+                345345345, "Google Inc.",
+                new Date(), "Gurgaon", 760, lender.getInfo().getLegalIdentities().get(0));
+
+        RejectKYC rejectKYCFlow = new RejectKYC("KYC_1", buyer.getInfo().getLegalIdentities().get(0));
+
+        CordaFuture<SignedTransaction> submitKYCFuture = buyer.startFlow(submitKYCFlow);
+        setup();
+
+        CordaFuture<SignedTransaction> approveKYCFuture = lender.startFlow(rejectKYCFlow);
+        setup();
+
+        SignedTransaction signedTransaction = approveKYCFuture.get();
+
+        assertEquals(1, signedTransaction.getTx().getCommands().size());
+        Command command = signedTransaction.getTx().getCommands().get(0);
+
+        assert (command.getValue() instanceof KYCContract.ApproveKYC);
+        assertTrue(command.getSigners().contains(lender.getInfo().getLegalIdentities().get(0).getOwningKey()));
+    }
 }

@@ -1,21 +1,23 @@
-package com.template.flows;
+package com.template.flows.auth;
 
 import co.paralleluniverse.fibers.Suspendable;
+import com.template.flows.auth.SignUp;
 import net.corda.core.flows.*;
 import net.corda.core.transactions.SignedTransaction;
 
-@InitiatedBy(RejectPurchaseOrder.class)
-public class RejectPurchaseOrderResponder extends FlowLogic<SignedTransaction> {
+@InitiatedBy(SignUp.class)
+public class SignUpResponder extends FlowLogic<SignedTransaction> {
     private FlowSession otherPartySession;
 
-    public RejectPurchaseOrderResponder(FlowSession otherPartySession) {
+    public SignUpResponder(FlowSession otherPartySession) {
         this.otherPartySession = otherPartySession;
     }
 
     @Suspendable
     @Override
     public SignedTransaction call() throws FlowException {
-        System.out.println("Purchase Order rejected.");
+        System.out.println("User Registered.");
+
         return subFlow(new ReceiveFinalityFlow(otherPartySession));
 
     }

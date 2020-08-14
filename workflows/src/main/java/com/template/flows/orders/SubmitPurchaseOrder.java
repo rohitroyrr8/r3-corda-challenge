@@ -1,12 +1,9 @@
-package com.template.flows;
+package com.template.flows.orders;
 
 import co.paralleluniverse.fibers.Suspendable;
-import com.template.contracts.MetalContract;
-import com.template.contracts.UserContract;
-import com.template.enums.UserStaus;
-import com.template.states.MetalState;
-import com.template.states.UserState;
-import com.template.utils.CommonUtils;
+import com.template.contracts.PurchaseOrderContract;
+import com.template.enums.PurchaseOrderStatus;
+import com.template.states.PurchaseOrderState;
 import net.corda.core.contracts.Command;
 import net.corda.core.flows.*;
 import net.corda.core.identity.Party;
@@ -16,19 +13,21 @@ import net.corda.core.utilities.ProgressTracker;
 
 import java.util.Date;
 
-// ******************
-// * Initiator flow *
-// ******************
 @InitiatingFlow
 @StartableByRPC
-public class SignUp extends FlowLogic<SignedTransaction> {
-    private String organisationName;
-    private String country;
-    private String email;
+public class SubmitPurchaseOrder extends FlowLogic<SignedTransaction> {
+    private String identifier;
+    private String name;
+    private String model;
+    private String companyName;
+    private String color;
+    private String fuelType;
+    private Double rate;
+    private int quantity;
+    private Double amount;
     private String username;
-    private String password; // need to be hashed
-    private String registeredAs;
 
+    private Party seller;
     private Party lender;
 
     private final ProgressTracker.Step RETRIEVING_NOTARY = new ProgressTracker.Step("Retrieving the notary.");
@@ -45,38 +44,63 @@ public class SignUp extends FlowLogic<SignedTransaction> {
             FINALISING_TRANSACTION
     );
 
-    public SignUp(String organisationName, String country, String email, String username, String password, String registeredAs, Party lender) {
-        this.organisationName = organisationName;
-        this.country = country;
-        this.email = email;
+    public SubmitPurchaseOrder(String identifier, String name, String model, String companyName, String color, String fuelType, Double rate, int quantity, Double amount, String username, Party seller, Party lender) {
+        this.identifier = identifier;
+        this.name = name;
+        this.model = model;
+        this.companyName = companyName;
+        this.color = color;
+        this.fuelType = fuelType;
+        this.rate = rate;
+        this.quantity = quantity;
+        this.amount = amount;
         this.username = username;
-        this.password = password;
-        this.registeredAs = registeredAs;
+        this.seller = seller;
         this.lender = lender;
     }
 
-    public String getOrganisationName() {
-        return organisationName;
+    public String getIdentifier() {
+        return identifier;
     }
 
-    public String getCountry() {
-        return country;
+    public String getName() {
+        return name;
     }
 
-    public String getEmail() {
-        return email;
+    public String getModel() {
+        return model;
+    }
+
+    public String getCompanyName() {
+        return companyName;
+    }
+
+    public String getColor() {
+        return color;
+    }
+
+    public String getFuelType() {
+        return fuelType;
+    }
+
+    public Double getRate() {
+        return rate;
+    }
+
+    public int getQuantity() {
+        return quantity;
+    }
+
+    public Double getAmount() {
+        return amount;
     }
 
     public String getUsername() {
         return username;
     }
 
-    public String getPassword() {
-        return password;
-    }
-
-    public String getRegisteredAs() {
-        return registeredAs;
+    public Party getSeller() {
+        return seller;
     }
 
     public Party getLender() {
@@ -96,10 +120,10 @@ public class SignUp extends FlowLogic<SignedTransaction> {
         progressTracker.setCurrentStep(RETRIEVING_NOTARY);
         Party notary = getServiceHub().getNetworkMapCache().getNotaryIdentities().get(0);
 
-        UserState outputState = new UserState(CommonUtils.randomAlphaNumeric(16), organisationName, country, email, username,
-                password, registeredAs, UserStaus.Active.toString(), new Date(), null, getOurIdentity(), lender);
+        PurchaseOrderState outputState = new PurchaseOrderState(identifier, name, model, companyName, color, fuelType, rate,
+                quantity, amount, username, new Date(), PurchaseOrderStatus.Submitted.toString(), 0d, getOurIdentity(), seller, lender);
 
-        Command command = new Command(new UserContract.SignUp(), getOurIdentity().getOwningKey());
+        Command command = new Command(new PurchaseOrderContract.SubmitPurchaseOrder(), getOurIdentity().getOwningKey());
 
         // generating transaction
         progressTracker.setCurrentStep(GENERATING_TRANSACTION);
@@ -113,11 +137,11 @@ public class SignUp extends FlowLogic<SignedTransaction> {
 
         // counter party session
         progressTracker.setCurrentStep(COUNTER_PARTY_SESSION);
-
+        FlowSession sellerPartySession = initiateFlow(seller);
         FlowSession lenderPartySession = initiateFlow(lender);
 
         // finalising transaction
         progressTracker.setCurrentStep(FINALISING_TRANSACTION);
-        return subFlow(new FinalityFlow(signedTransaction, lenderPartySession));
+        return subFlow(new FinalityFlow(signedTransaction, sellerPartySession, lenderPartySession));
     }
 }

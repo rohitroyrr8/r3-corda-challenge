@@ -48,7 +48,9 @@ public class KYCContract implements Contract {
             if(!(outputState instanceof KYCState)) { throw new IllegalArgumentException("Output must be KYCState."); }
 
             KYCState kycState = (KYCState) outputState;
-            if(kycState.getAadharNumber() <= 0) { throw new IllegalArgumentException("Aadhar Number is required."); }
+            if(kycState.getIdentifier() == null) { throw new IllegalArgumentException("Identifier is required."); }
+            if(kycState.getUsername() == null) { throw new IllegalArgumentException("Username is required."); }
+            if(kycState.getAadharNumber() == null) { throw new IllegalArgumentException("Aadhar Number is required."); }
             if(kycState.getPanNumber() == null) { throw new IllegalArgumentException("PAN Number is required."); }
             if(kycState.getCompanyPanNumber() == null) { throw new IllegalArgumentException("Company PAN Number is required."); }
             if(kycState.getIncorporationNumber() <= 0) { throw new IllegalArgumentException("Incorporation Number is required."); }
@@ -67,17 +69,17 @@ public class KYCContract implements Contract {
         }
 
         else if(commandData instanceof ApproveKYC) {
-            if(tx.getInputStates().size() != 1) { throw new IllegalArgumentException("Approve KYC must have one input state."+tx.getInputStates().size()); }
+            if(tx.getInputStates().size() != 1) { throw new IllegalArgumentException("Approve KYC must have one input state."); }
             if(tx.getOutputStates().size() != 1) { throw new IllegalArgumentException("Approve KYC must have one output state."); }
 
             // 2. Content Rule
             ContractState inputState = tx.getInput(0);
             ContractState outputState = tx.getOutput(0);
 
-            if(!(outputState instanceof KYCState)) { throw new IllegalArgumentException("Output must be KYCState."); }
-
             KYCState kycState = (KYCState) inputState;
             if(kycState.getStatus() == KYCStatus.Approved.toString()) { throw new IllegalArgumentException("KYC is already approved."); }
+
+            if(!(outputState instanceof KYCState)) { throw new IllegalArgumentException("Output must be KYCState."); }
 
             // Signer Rule
             Party signingParty = kycState.getLender();
@@ -88,24 +90,23 @@ public class KYCContract implements Contract {
         }
 
         else if(commandData instanceof RejectKYC) {
-            if(tx.getInputStates().size() != 1) { throw new IllegalArgumentException("Reject KYC must have one input state." + tx.getInputStates().size()); }
+            if(tx.getInputStates().size() != 1) { throw new IllegalArgumentException("Reject KYC must have one input state."); }
             if(tx.getOutputStates().size() != 1) { throw new IllegalArgumentException("Reject KYC must have one output state."); }
 
             // 2. Content Rule
             ContractState inputState = tx.getInput(0);
             ContractState outputState = tx.getOutput(0);
 
-            if(!(outputState instanceof KYCState)) { throw new IllegalArgumentException("Output must be KYCState."); }
-
             KYCState kycState = (KYCState) inputState;
             if(kycState.getStatus() == KYCStatus.Rejected.toString()) { throw new IllegalArgumentException("KYC is already rejected."); }
+
+            if(!(outputState instanceof KYCState)) { throw new IllegalArgumentException("Output must be KYCState."); }
 
             // Signer Rule
             Party signingParty = kycState.getLender();
             PublicKey signingKey = signingParty.getOwningKey();
 
             if(!requiredSigners.contains(signingKey)) { throw new IllegalArgumentException("Authorised Party must sign the transaction."); }
-
         }
 
         else {

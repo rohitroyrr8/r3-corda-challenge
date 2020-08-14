@@ -1,4 +1,4 @@
-package com.template.flows;
+package com.template.flows.kyc;
 
 import co.paralleluniverse.fibers.Suspendable;
 import com.template.contracts.KYCContract;
@@ -6,7 +6,6 @@ import com.template.contracts.MetalContract;
 import com.template.enums.KYCStatus;
 import com.template.states.KYCState;
 import com.template.states.MetalState;
-import com.template.utils.QueryUtils;
 import net.corda.core.contracts.Command;
 import net.corda.core.contracts.StateAndRef;
 import net.corda.core.flows.*;
@@ -17,15 +16,14 @@ import net.corda.core.transactions.SignedTransaction;
 import net.corda.core.transactions.TransactionBuilder;
 import net.corda.core.utilities.ProgressTracker;
 
+import java.util.Date;
 import java.util.List;
 
-// ******************
-// * Initiator flow *
-// ******************
 @InitiatingFlow
 @StartableByRPC
-public class RejectKYC extends FlowLogic<SignedTransaction> {
+public class ApproveKYC extends FlowLogic<SignedTransaction> {
     private String identifier;
+    private Party owner;
     private int index = 0;
 
     private final ProgressTracker.Step RETRIEVING_NOTARY = new ProgressTracker.Step("Retrieving the notary.");
@@ -42,8 +40,17 @@ public class RejectKYC extends FlowLogic<SignedTransaction> {
             FINALISING_TRANSACTION
     );
 
-    public RejectKYC(String identifier) {
+    public ApproveKYC(String identifier, Party owner) {
         this.identifier = identifier;
+        this.owner = owner;
+    }
+
+    public String getIdentifier() {
+        return identifier;
+    }
+
+    public Party getOwner() {
+        return owner;
     }
 
     public int getIndex() {
@@ -64,11 +71,12 @@ public class RejectKYC extends FlowLogic<SignedTransaction> {
         Party notary = getServiceHub().getNetworkMapCache().getNotaryIdentities().get(0);
 
         StateAndRef<KYCState> inputStateStateAndRef = null;
-        inputStateStateAndRef = this.checkForUnConsumedKYCState(identifier);
+        inputStateStateAndRef = this.checkForKYCState();
 
-        KYCState outputState = new KYCState(inputStateStateAndRef.getState().getData().getIdentifier(),
-                inputStateStateAndRef.getState().getData().getVirtualOrganisation(),
-                inputStateStateAndRef.getState().getData().getPartyName(),
+        Party owner = inputStateStateAndRef.getState().getData().getOwner();
+
+        KYCState outputState = new KYCState(identifier,
+                inputStateStateAndRef.getState().getData().getUsername(),
                 inputStateStateAndRef.getState().getData().getAadharNumber(),
                 inputStateStateAndRef.getState().getData().getPanNumber(),
                 inputStateStateAndRef.getState().getData().getCompanyPanNumber(),
@@ -77,19 +85,18 @@ public class RejectKYC extends FlowLogic<SignedTransaction> {
                 inputStateStateAndRef.getState().getData().getIncorporationDate(),
                 inputStateStateAndRef.getState().getData().getIncorporationPlace(),
                 inputStateStateAndRef.getState().getData().getCibilScore(),
-                10000,
-                KYCStatus.Rejected.toString(),
+                100000, KYCStatus.Approved.toString(),
                 inputStateStateAndRef.getState().getData().getCreatedOn(),
-                inputStateStateAndRef.getState().getData().getOwner(),
-                getOurIdentity());
+                owner, getOurIdentity());
 
-        Command command = new Command(new KYCContract.RejectKYC(), getOurIdentity().getOwningKey());
+        Command command = new Command(new KYCContract.ApproveKYC(), getOurIdentity().getOwningKey());
 
         // generating transaction
         progressTracker.setCurrentStep(GENERATING_TRANSACTION);
         TransactionBuilder transactionBuilder = new TransactionBuilder(notary)
                 .addOutputState(outputState)
                 .addCommand(command);
+        transactionBuilder.addInputState(inputStateStateAndRef);
 
         // signing transaction
         progressTracker.setCurrentStep(SIGNING_TRANSACTION);
@@ -97,25 +104,26 @@ public class RejectKYC extends FlowLogic<SignedTransaction> {
 
         // counter party session
         progressTracker.setCurrentStep(COUNTER_PARTY_SESSION);
-        FlowSession otherPartySession = initiateFlow(inputStateStateAndRef.getState().getData().getOwner());
+        FlowSession otherPartySession = initiateFlow(owner);
 
         // finalising transaction
         progressTracker.setCurrentStep(FINALISING_TRANSACTION);
         return subFlow(new FinalityFlow(signedTransaction, otherPartySession));
     }
 
-    public StateAndRef<KYCState> checkForUnConsumedKYCState(String identifier) throws FlowException {
+    private StateAndRef<KYCState> checkForKYCState() throws FlowException {
         QueryCriteria queryCriteria = new QueryCriteria.VaultQueryCriteria(Vault.StateStatus.UNCONSUMED);
         List<StateAndRef<KYCState>> kycStateAndRefList = getServiceHub().getVaultService().queryBy(KYCState.class, queryCriteria).getStates();
 
         boolean isFound = false;
-        for(int i = 0; i < kycStateAndRefList.size(); i++) {
+        for(int i=0; i < kycStateAndRefList.size(); i++) {
             if(kycStateAndRefList.get(i).getState().getData().getIdentifier().equals(identifier)) {
                 isFound = true;
                 index = i;
                 break;
             }
         }
+
         if(!isFound) {throw new FlowException("No un-consumed state found."); }
         return kycStateAndRefList.get(index);
     }

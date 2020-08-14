@@ -1,21 +1,22 @@
-package com.template.flows;
+package com.template.flows.kyc;
 
 import co.paralleluniverse.fibers.Suspendable;
 import net.corda.core.flows.*;
 import net.corda.core.transactions.SignedTransaction;
 
-@InitiatedBy(ApprovePurchaseOrder.class)
-public class ApprovePurchaseOrderResponder extends FlowLogic<SignedTransaction> {
+@InitiatedBy(SubmitKYC.class)
+public class SubmitKYCResponder extends FlowLogic<SignedTransaction> {
     private FlowSession otherPartySession;
 
-    public ApprovePurchaseOrderResponder(FlowSession otherPartySession) {
+    public SubmitKYCResponder(FlowSession otherPartySession) {
         this.otherPartySession = otherPartySession;
     }
 
     @Suspendable
     @Override
     public SignedTransaction call() throws FlowException {
-        System.out.println("Purchase Order approved.");
+        System.out.println("KYC submitted successfully.");
+
         return subFlow(new ReceiveFinalityFlow(otherPartySession));
 
     }

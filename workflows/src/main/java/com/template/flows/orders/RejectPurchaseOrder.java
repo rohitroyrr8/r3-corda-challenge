@@ -1,13 +1,11 @@
-package com.template.flows;
+package com.template.flows.orders;
 
 import co.paralleluniverse.fibers.Suspendable;
-import com.template.contracts.MetalContract;
-import com.template.contracts.UserContract;
-import com.template.states.MetalState;
-import com.template.states.UserState;
+import com.template.contracts.PurchaseOrderContract;
+import com.template.enums.PurchaseOrderStatus;
+import com.template.states.PurchaseOrderState;
 import net.corda.core.contracts.Command;
 import net.corda.core.contracts.StateAndRef;
-import net.corda.core.contracts.TransactionState;
 import net.corda.core.flows.*;
 import net.corda.core.identity.Party;
 import net.corda.core.node.services.Vault;
@@ -16,15 +14,16 @@ import net.corda.core.transactions.SignedTransaction;
 import net.corda.core.transactions.TransactionBuilder;
 import net.corda.core.utilities.ProgressTracker;
 
-import java.util.Date;
 import java.util.List;
 
 @InitiatingFlow
 @StartableByRPC
-public class Login extends FlowLogic<SignedTransaction> {
+public class RejectPurchaseOrder extends FlowLogic<SignedTransaction> {
     private int index = 0;
-    private String username;
-    private String password;
+    private String identifier;
+
+    private Party buyer;
+    private Party lender;
 
     private final ProgressTracker.Step RETRIEVING_NOTARY = new ProgressTracker.Step("Retrieving the notary.");
     private final ProgressTracker.Step GENERATING_TRANSACTION = new ProgressTracker.Step("Generating transaction.");
@@ -40,9 +39,22 @@ public class Login extends FlowLogic<SignedTransaction> {
             FINALISING_TRANSACTION
     );
 
-    public Login(String username, String password) {
-        this.username = username;
-        this.password = password;
+    public RejectPurchaseOrder(String identifier, Party buyer, Party lender) {
+        this.identifier = identifier;
+        this.buyer = buyer;
+        this.lender = lender;
+    }
+
+    public String getIdentifier() {
+        return identifier;
+    }
+
+    public Party getBuyer() {
+        return buyer;
+    }
+
+    public Party getLender() {
+        return lender;
     }
 
     @Override
@@ -58,18 +70,26 @@ public class Login extends FlowLogic<SignedTransaction> {
         progressTracker.setCurrentStep(RETRIEVING_NOTARY);
         Party notary = getServiceHub().getNetworkMapCache().getNotaryIdentities().get(0);
 
-        StateAndRef<UserState> inputStateStateAndRef = null;
-        inputStateStateAndRef = this.checkForUserState();
+        StateAndRef<PurchaseOrderState> inputStateStateAndRef = null;
+        inputStateStateAndRef = this.checkForMetalState();
 
-        Party owner = inputStateStateAndRef.getState().getData().getOwner();
-        Party lender =inputStateStateAndRef.getState().getData().getLender();
+        Party buyer = inputStateStateAndRef.getState().getData().getBuyer();
+        Party lender = inputStateStateAndRef.getState().getData().getLender();
 
-        UserState transactionState = inputStateStateAndRef.getState().getData();
-        UserState outputState = new UserState(transactionState.getIdentifier(), transactionState.getOrganisationName(),
-                transactionState.getCountry(), transactionState.getEmail(), transactionState.getUsername(), transactionState.getPassword(),
-                transactionState.getRegisteredAs(), transactionState.getStatus(), transactionState.getCreatedOn(), new Date(), owner, lender);
+        PurchaseOrderState outputState = new PurchaseOrderState(identifier,
+                inputStateStateAndRef.getState().getData().getName(),
+                inputStateStateAndRef.getState().getData().getModel(),
+                inputStateStateAndRef.getState().getData().getCompanyName(),
+                inputStateStateAndRef.getState().getData().getColor(),
+                inputStateStateAndRef.getState().getData().getFuelType(),
+                inputStateStateAndRef.getState().getData().getRate(),
+                inputStateStateAndRef.getState().getData().getQuantity(),
+                inputStateStateAndRef.getState().getData().getAmount(),
+                inputStateStateAndRef.getState().getData().getUsername(),
+                inputStateStateAndRef.getState().getData().getCreatedOn(),
+                PurchaseOrderStatus.Received.toString(), 0d, buyer, getOurIdentity(), lender);
 
-        Command command = new Command(new UserContract.Login(), getOurIdentity().getOwningKey());
+        Command command = new Command(new PurchaseOrderContract.ApprovePurchaseOrder(), getOurIdentity().getOwningKey());
 
         // generating transaction
         progressTracker.setCurrentStep(GENERATING_TRANSACTION);
@@ -84,21 +104,21 @@ public class Login extends FlowLogic<SignedTransaction> {
 
         // counter party session
         progressTracker.setCurrentStep(COUNTER_PARTY_SESSION);
+        FlowSession buyerPartySession = initiateFlow(buyer);
         FlowSession lenderPartySession = initiateFlow(lender);
 
         // finalising transaction
         progressTracker.setCurrentStep(FINALISING_TRANSACTION);
-        return subFlow(new FinalityFlow(signedTransaction, lenderPartySession));
+        return subFlow(new FinalityFlow(signedTransaction, buyerPartySession, lenderPartySession));
     }
 
-    private StateAndRef<UserState> checkForUserState() throws FlowException {
+    private StateAndRef<PurchaseOrderState> checkForMetalState() throws FlowException {
         QueryCriteria queryCriteria = new QueryCriteria.VaultQueryCriteria(Vault.StateStatus.UNCONSUMED);
-        List<StateAndRef<UserState>> userStateAndRefList = getServiceHub().getVaultService().queryBy(UserState.class, queryCriteria).getStates();
+        List<StateAndRef<PurchaseOrderState>> purchaseOrderStateAndRefsList = getServiceHub().getVaultService().queryBy(PurchaseOrderState.class, queryCriteria).getStates();
 
         boolean isFound = false;
-        for(int i=0; i < userStateAndRefList.size(); i++) {
-            if(userStateAndRefList.get(i).getState().getData().getUsername().equals(username)
-            && userStateAndRefList.get(i).getState().getData().getPassword().equals(password)) {
+        for(int i=0; i < purchaseOrderStateAndRefsList.size(); i++) {
+            if(purchaseOrderStateAndRefsList.get(i).getState().getData().getIdentifier().equals(identifier)) {
                 isFound = true;
                 index = i;
                 break;
@@ -106,6 +126,6 @@ public class Login extends FlowLogic<SignedTransaction> {
         }
 
         if(!isFound) {throw new FlowException("No un-consumed state found."); }
-        return userStateAndRefList.get(index);
+        return purchaseOrderStateAndRefsList.get(index);
     }
 }

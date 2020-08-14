@@ -1,12 +1,9 @@
-package com.template.flows;
+package com.template.flows.kyc;
 
 import co.paralleluniverse.fibers.Suspendable;
 import com.template.contracts.KYCContract;
-import com.template.contracts.MetalContract;
 import com.template.enums.KYCStatus;
 import com.template.states.KYCState;
-import com.template.states.MetalState;
-import com.template.utils.CommonUtils;
 import net.corda.core.contracts.Command;
 import net.corda.core.flows.*;
 import net.corda.core.identity.Party;
@@ -20,7 +17,9 @@ import java.util.Date;
 @InitiatingFlow
 @StartableByRPC
 public class SubmitKYC extends FlowLogic<SignedTransaction> {
-    private int aadharNumber;
+    private String identifier;
+    private String username;
+    private String aadharNumber;
     private String panNumber;
     private String companyPanNumber;
     private int incorporationNumber;
@@ -45,9 +44,11 @@ public class SubmitKYC extends FlowLogic<SignedTransaction> {
             FINALISING_TRANSACTION
     );
 
-    public SubmitKYC(int aadharNumber, String panNumber, String companyPanNumber, int incorporationNumber,
+    public SubmitKYC(String identifier , String username, String aadharNumber, String panNumber, String companyPanNumber, int incorporationNumber,
                      String companyName, Date incorporationDate, String incorporationPlace, int cibilScore,
                      Party lender) {
+        this.identifier = identifier;
+        this.username = username;
         this.aadharNumber = aadharNumber;
         this.panNumber = panNumber;
         this.companyPanNumber = companyPanNumber;
@@ -59,7 +60,15 @@ public class SubmitKYC extends FlowLogic<SignedTransaction> {
         this.lender = lender;
     }
 
-    public int getAadharNumber() {
+    public String getIdentifier() {
+        return identifier;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public String getAadharNumber() {
         return aadharNumber;
     }
 
@@ -110,9 +119,8 @@ public class SubmitKYC extends FlowLogic<SignedTransaction> {
         Party notary = getServiceHub().getNetworkMapCache().getNotaryIdentities().get(0);
 
         //String identifier = CommonUtils.randomAlphaNumeric(16);
-        String identifier = "1234";
-        KYCState outputState = new KYCState(identifier, "Lender",
-                "Lender", aadharNumber, panNumber, companyPanNumber, incorporationNumber,
+        KYCState outputState = new KYCState(identifier, username,
+                aadharNumber, panNumber, companyPanNumber, incorporationNumber,
                 companyName, incorporationDate, incorporationPlace, cibilScore, 0, KYCStatus.Submitted.toString(),
                 new Date(), getOurIdentity(), lender);
 

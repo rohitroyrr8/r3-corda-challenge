@@ -1,9 +1,9 @@
-package com.template.flows;
+package com.template.flows.kyc;
 
 import co.paralleluniverse.fibers.Suspendable;
-import com.template.contracts.PurchaseOrderContract;
-import com.template.enums.PurchaseOrderStatus;
-import com.template.states.PurchaseOrderState;
+import com.template.contracts.KYCContract;
+import com.template.enums.KYCStatus;
+import com.template.states.KYCState;
 import net.corda.core.contracts.Command;
 import net.corda.core.contracts.StateAndRef;
 import net.corda.core.flows.*;
@@ -18,13 +18,10 @@ import java.util.List;
 
 @InitiatingFlow
 @StartableByRPC
-public class PayEMIForPurchaseOrder extends FlowLogic<SignedTransaction> {
-    private int index = 0;
+public class RejectKYC extends FlowLogic<SignedTransaction> {
     private String identifier;
-    private Double emiAmount;
-
-    private Party seller;
-    private Party lender;
+    private Party owner;
+    private int index = 0;
 
     private final ProgressTracker.Step RETRIEVING_NOTARY = new ProgressTracker.Step("Retrieving the notary.");
     private final ProgressTracker.Step GENERATING_TRANSACTION = new ProgressTracker.Step("Generating transaction.");
@@ -40,27 +37,21 @@ public class PayEMIForPurchaseOrder extends FlowLogic<SignedTransaction> {
             FINALISING_TRANSACTION
     );
 
-    public PayEMIForPurchaseOrder(String identifier, Double emiAmount, Party seller, Party lender) {
+    public RejectKYC(String identifier, Party owner) {
         this.identifier = identifier;
-        this.emiAmount = emiAmount;
-        this.seller = seller;
-        this.lender = lender;
+        this.owner = owner;
     }
 
     public String getIdentifier() {
         return identifier;
     }
 
-    public Party getBuyer() {
-        return seller;
+    public Party getOwner() {
+        return owner;
     }
 
-    public Party getLender() {
-        return lender;
-    }
-
-    public Double getEmiAmount() {
-        return emiAmount;
+    public int getIndex() {
+        return index;
     }
 
     @Override
@@ -76,33 +67,26 @@ public class PayEMIForPurchaseOrder extends FlowLogic<SignedTransaction> {
         progressTracker.setCurrentStep(RETRIEVING_NOTARY);
         Party notary = getServiceHub().getNetworkMapCache().getNotaryIdentities().get(0);
 
-        StateAndRef<PurchaseOrderState> inputStateStateAndRef = null;
-        inputStateStateAndRef = this.checkForMetalState();
+        StateAndRef<KYCState> inputStateStateAndRef = null;
+        inputStateStateAndRef = this.checkForKYCState();
 
-        Party seller = inputStateStateAndRef.getState().getData().getSeller();
-        Party lender = inputStateStateAndRef.getState().getData().getLender();
-        Double totalPaidAmount = inputStateStateAndRef.getState().getData().getAmountPaid() + emiAmount;
+        Party owner = inputStateStateAndRef.getState().getData().getOwner();
 
-        String status = null;
-        if(totalPaidAmount == inputStateStateAndRef.getState().getData().getAmount()) {
-            status = PurchaseOrderStatus.Approved.toString();
-        } else {
-            status = PurchaseOrderStatus.Received.toString();
-        }
-        PurchaseOrderState outputState = new PurchaseOrderState(identifier,
-                inputStateStateAndRef.getState().getData().getName(),
-                inputStateStateAndRef.getState().getData().getModel(),
-                inputStateStateAndRef.getState().getData().getCompanyName(),
-                inputStateStateAndRef.getState().getData().getColor(),
-                inputStateStateAndRef.getState().getData().getFuelType(),
-                inputStateStateAndRef.getState().getData().getRate(),
-                inputStateStateAndRef.getState().getData().getQuantity(),
-                inputStateStateAndRef.getState().getData().getAmount(),
+        KYCState outputState = new KYCState(identifier,
                 inputStateStateAndRef.getState().getData().getUsername(),
+                inputStateStateAndRef.getState().getData().getAadharNumber(),
+                inputStateStateAndRef.getState().getData().getPanNumber(),
+                inputStateStateAndRef.getState().getData().getCompanyPanNumber(),
+                inputStateStateAndRef.getState().getData().getIncorporationNumber(),
+                inputStateStateAndRef.getState().getData().getCompanyName(),
+                inputStateStateAndRef.getState().getData().getIncorporationDate(),
+                inputStateStateAndRef.getState().getData().getIncorporationPlace(),
+                inputStateStateAndRef.getState().getData().getCibilScore(),
+                100000, KYCStatus.Approved.toString(),
                 inputStateStateAndRef.getState().getData().getCreatedOn(),
-                status, totalPaidAmount, getOurIdentity(), seller, lender);
+                owner, getOurIdentity());
 
-        Command command = new Command(new PurchaseOrderContract.PayEMIForPurchasedOrder(), getOurIdentity().getOwningKey());
+        Command command = new Command(new KYCContract.ApproveKYC(), getOurIdentity().getOwningKey());
 
         // generating transaction
         progressTracker.setCurrentStep(GENERATING_TRANSACTION);
@@ -117,21 +101,20 @@ public class PayEMIForPurchaseOrder extends FlowLogic<SignedTransaction> {
 
         // counter party session
         progressTracker.setCurrentStep(COUNTER_PARTY_SESSION);
-        FlowSession buyerPartySession = initiateFlow(seller);
-        FlowSession lenderPartySession = initiateFlow(lender);
+        FlowSession otherPartySession = initiateFlow(owner);
 
         // finalising transaction
         progressTracker.setCurrentStep(FINALISING_TRANSACTION);
-        return subFlow(new FinalityFlow(signedTransaction, buyerPartySession, lenderPartySession));
+        return subFlow(new FinalityFlow(signedTransaction, otherPartySession));
     }
 
-    private StateAndRef<PurchaseOrderState> checkForMetalState() throws FlowException {
+    private StateAndRef<KYCState> checkForKYCState() throws FlowException {
         QueryCriteria queryCriteria = new QueryCriteria.VaultQueryCriteria(Vault.StateStatus.UNCONSUMED);
-        List<StateAndRef<PurchaseOrderState>> purchaseOrderStateAndRefsList = getServiceHub().getVaultService().queryBy(PurchaseOrderState.class, queryCriteria).getStates();
+        List<StateAndRef<KYCState>> kycStateAndRefList = getServiceHub().getVaultService().queryBy(KYCState.class, queryCriteria).getStates();
 
         boolean isFound = false;
-        for(int i=0; i < purchaseOrderStateAndRefsList.size(); i++) {
-            if(purchaseOrderStateAndRefsList.get(i).getState().getData().getIdentifier().equals(identifier)) {
+        for(int i=0; i < kycStateAndRefList.size(); i++) {
+            if(kycStateAndRefList.get(i).getState().getData().getIdentifier().equals(identifier)) {
                 isFound = true;
                 index = i;
                 break;
@@ -139,6 +122,6 @@ public class PayEMIForPurchaseOrder extends FlowLogic<SignedTransaction> {
         }
 
         if(!isFound) {throw new FlowException("No un-consumed state found."); }
-        return purchaseOrderStateAndRefsList.get(index);
+        return kycStateAndRefList.get(index);
     }
 }

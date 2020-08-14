@@ -1,4 +1,4 @@
-package com.template.flows;
+package com.template.flows.orders;
 
 import co.paralleluniverse.fibers.Suspendable;
 import com.template.contracts.PurchaseOrderContract;
@@ -18,11 +18,11 @@ import java.util.List;
 
 @InitiatingFlow
 @StartableByRPC
-public class MarkReceivedPurchaseOrder extends FlowLogic<SignedTransaction> {
+public class ApprovePurchaseOrder extends FlowLogic<SignedTransaction> {
     private int index = 0;
     private String identifier;
 
-    private Party seller;
+    private Party buyer;
     private Party lender;
 
     private final ProgressTracker.Step RETRIEVING_NOTARY = new ProgressTracker.Step("Retrieving the notary.");
@@ -39,9 +39,9 @@ public class MarkReceivedPurchaseOrder extends FlowLogic<SignedTransaction> {
             FINALISING_TRANSACTION
     );
 
-    public MarkReceivedPurchaseOrder(String identifier, Party seller, Party lender) {
+    public ApprovePurchaseOrder(String identifier, Party buyer, Party lender) {
         this.identifier = identifier;
-        this.seller = seller;
+        this.buyer = buyer;
         this.lender = lender;
     }
 
@@ -50,7 +50,7 @@ public class MarkReceivedPurchaseOrder extends FlowLogic<SignedTransaction> {
     }
 
     public Party getBuyer() {
-        return seller;
+        return buyer;
     }
 
     public Party getLender() {
@@ -73,7 +73,7 @@ public class MarkReceivedPurchaseOrder extends FlowLogic<SignedTransaction> {
         StateAndRef<PurchaseOrderState> inputStateStateAndRef = null;
         inputStateStateAndRef = this.checkForMetalState();
 
-        Party seller = inputStateStateAndRef.getState().getData().getSeller();
+        Party buyer = inputStateStateAndRef.getState().getData().getBuyer();
         Party lender = inputStateStateAndRef.getState().getData().getLender();
 
         PurchaseOrderState outputState = new PurchaseOrderState(identifier,
@@ -87,9 +87,9 @@ public class MarkReceivedPurchaseOrder extends FlowLogic<SignedTransaction> {
                 inputStateStateAndRef.getState().getData().getAmount(),
                 inputStateStateAndRef.getState().getData().getUsername(),
                 inputStateStateAndRef.getState().getData().getCreatedOn(),
-                PurchaseOrderStatus.Received.toString(), 0d, getOurIdentity(), seller, lender);
+                PurchaseOrderStatus.Approved.toString(), 0d, buyer, getOurIdentity(), lender);
 
-        Command command = new Command(new PurchaseOrderContract.MarkAsReceivedPurchaseOrder(), getOurIdentity().getOwningKey());
+        Command command = new Command(new PurchaseOrderContract.ApprovePurchaseOrder(), getOurIdentity().getOwningKey());
 
         // generating transaction
         progressTracker.setCurrentStep(GENERATING_TRANSACTION);
@@ -104,7 +104,7 @@ public class MarkReceivedPurchaseOrder extends FlowLogic<SignedTransaction> {
 
         // counter party session
         progressTracker.setCurrentStep(COUNTER_PARTY_SESSION);
-        FlowSession buyerPartySession = initiateFlow(seller);
+        FlowSession buyerPartySession = initiateFlow(buyer);
         FlowSession lenderPartySession = initiateFlow(lender);
 
         // finalising transaction

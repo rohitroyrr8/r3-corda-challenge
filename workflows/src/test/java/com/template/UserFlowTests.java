@@ -2,8 +2,8 @@ package com.template;
 
 import com.google.common.collect.ImmutableList;
 import com.template.contracts.UserContract;
-import com.template.flows.Login;
-import com.template.flows.SignUp;
+import com.template.flows.auth.Login;
+import com.template.flows.auth.SignUp;
 import com.template.states.UserState;
 import net.corda.core.concurrent.CordaFuture;
 import net.corda.core.contracts.Command;
@@ -16,8 +16,6 @@ import net.corda.testing.node.TestCordapp;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
-import javax.xml.ws.WebServiceRefs;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;

@@ -1,21 +1,22 @@
-package com.template.flows;
+package com.template.flows.orders;
 
 import co.paralleluniverse.fibers.Suspendable;
+import com.template.flows.orders.RejectPurchaseOrder;
 import net.corda.core.flows.*;
 import net.corda.core.transactions.SignedTransaction;
 
-@InitiatedBy(MarkReceivedPurchaseOrder.class)
-public class MarkReceivedPurchaseOrderResponder extends FlowLogic<SignedTransaction> {
+@InitiatedBy(RejectPurchaseOrder.class)
+public class RejectPurchaseOrderResponder extends FlowLogic<SignedTransaction> {
     private FlowSession otherPartySession;
 
-    public MarkReceivedPurchaseOrderResponder(FlowSession otherPartySession) {
+    public RejectPurchaseOrderResponder(FlowSession otherPartySession) {
         this.otherPartySession = otherPartySession;
     }
 
     @Suspendable
     @Override
     public SignedTransaction call() throws FlowException {
-        System.out.println("Purchase Order marked received.");
+        System.out.println("Purchase Order rejected.");
         return subFlow(new ReceiveFinalityFlow(otherPartySession));
 
     }
