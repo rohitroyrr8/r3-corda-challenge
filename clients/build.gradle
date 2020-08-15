@@ -44,19 +44,19 @@ task runTemplateServer(type: JavaExec, dependsOn: assemble) {
     main = 'com.template.webserver.Starter'
     args '--server.port=10050', '--config.rpc.host=localhost', '--config.rpc.port=10006', '--config.rpc.username=user1', '--config.rpc.password=test'
 }
-task runMintServer(type: JavaExec, dependsOn: jar) {
+task runBuyerServer(type: JavaExec, dependsOn: jar) {
     classpath = sourceSets.main.runtimeClasspath
     main = 'com.template.webserver.Starter'
     args '--server.port=50005', '--config.rpc.host=localhost', '--config.rpc.port=10006', '--config.rpc.username=user1', '--config.rpc.password=test'
 }
 
-task runTraderAServer(type: JavaExec, dependsOn: jar) {
+task runSellerServer(type: JavaExec, dependsOn: jar) {
     classpath = sourceSets.main.runtimeClasspath
     main = 'com.template.webserver.Starter'
     args '--server.port=50006', '--config.rpc.host=localhost', '--config.rpc.port=10009', '--config.rpc.username=user1', '--config.rpc.password=test'
 }
 
-task runTraderBServer(type: JavaExec, dependsOn: jar) {
+task runLenderServer(type: JavaExec, dependsOn: jar) {
     classpath = sourceSets.main.runtimeClasspath
     main = 'com.template.webserver.Starter'
     args '--server.port=50007', '--config.rpc.host=localhost', '--config.rpc.port=10012', '--config.rpc.username=user1', '--config.rpc.password=test'

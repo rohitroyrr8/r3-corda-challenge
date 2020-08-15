@@ -22,6 +22,7 @@ import java.util.Date;
 @InitiatingFlow
 @StartableByRPC
 public class SignUp extends FlowLogic<SignedTransaction> {
+    private String identifier;
     private String organisationName;
     private String country;
     private String email;
@@ -45,7 +46,8 @@ public class SignUp extends FlowLogic<SignedTransaction> {
             FINALISING_TRANSACTION
     );
 
-    public SignUp(String organisationName, String country, String email, String username, String password, String registeredAs, Party lender) {
+    public SignUp(String identifier, String organisationName, String country, String email, String username, String password, String registeredAs, Party lender) {
+        this.identifier = identifier;
         this.organisationName = organisationName;
         this.country = country;
         this.email = email;
@@ -83,6 +85,10 @@ public class SignUp extends FlowLogic<SignedTransaction> {
         return lender;
     }
 
+    public String getIdentifier() {
+        return identifier;
+    }
+
     @Override
     public ProgressTracker getProgressTracker() {
         return progressTracker;
@@ -96,7 +102,7 @@ public class SignUp extends FlowLogic<SignedTransaction> {
         progressTracker.setCurrentStep(RETRIEVING_NOTARY);
         Party notary = getServiceHub().getNetworkMapCache().getNotaryIdentities().get(0);
 
-        UserState outputState = new UserState(CommonUtils.randomAlphaNumeric(16), organisationName, country, email, username,
+        UserState outputState = new UserState(identifier, organisationName, country, email, username,
                 password, registeredAs, UserStaus.Active.toString(), new Date(), null, getOurIdentity(), lender);
 
         Command command = new Command(new UserContract.SignUp(), getOurIdentity().getOwningKey());

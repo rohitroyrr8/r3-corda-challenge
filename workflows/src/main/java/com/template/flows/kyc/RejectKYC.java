@@ -82,7 +82,7 @@ public class RejectKYC extends FlowLogic<SignedTransaction> {
                 inputStateStateAndRef.getState().getData().getIncorporationDate(),
                 inputStateStateAndRef.getState().getData().getIncorporationPlace(),
                 inputStateStateAndRef.getState().getData().getCibilScore(),
-                100000, KYCStatus.Approved.toString(),
+                100000, KYCStatus.Rejected.toString(),
                 inputStateStateAndRef.getState().getData().getCreatedOn(),
                 owner, getOurIdentity());
 
