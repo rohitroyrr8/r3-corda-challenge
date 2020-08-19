@@ -30,11 +30,11 @@ dependencies {
 }
 
 springBoot {
-    mainClassName = "com.template.webserver.Server"
+    mainClassName = "com.template.webserver.Starter"
 }
 
 //task runTemplateClient(type: JavaExec, dependsOn: assemble) {
-//    classpath = sourceSets.main.runtimeClasspath
+//    classpath = sourceSets.main.runtimeClasspat
 //    main = 'com.template.Client'
 //    args 'localhost:10006', 'user1', 'test'
 //}

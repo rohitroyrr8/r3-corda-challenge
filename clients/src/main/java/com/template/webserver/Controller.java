@@ -28,6 +28,7 @@ import java.util.List;
 /**
  * Define your API endpoints here.
  */
+@CrossOrigin(origins = "http://localhost:4200/", maxAge = 3600)
 @RestController
 @RequestMapping("/api/metal") // The paths for HTTP requests are relative to this base path.
 public class Controller {

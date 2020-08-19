@@ -20,6 +20,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -27,6 +28,7 @@ import java.util.List;
 /**
  * Define your API endpoints here.
  */
+@CrossOrigin(origins = "http://localhost:4200/", maxAge = 3600)
 @RestController
 @RequestMapping("/api/kyc")
 public class KYCController {
@@ -39,11 +41,12 @@ public class KYCController {
     }
 
     @PostMapping(value = "/submit", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    private ResponseEntity<CordappResponse<Void>> submitKYC(@RequestBody KYC request) throws Exception {
+    private ResponseEntity<CordappResponse<Void>> submitKYC(@RequestParam("aadharFile") MultipartFile aadharFile, @RequestBody KYC request) throws Exception {
         CordappResponse<Void> response = new CordappResponse<Void>();
         try {
             if(request.getUsername() == null) { throw new IllegalArgumentException("Username name is required."); }
             if(request.getAadharNumber() == null) { throw new IllegalArgumentException("Aadhar Numberis required."); }
+            if(aadharFile.isEmpty()) { throw new IllegalArgumentException("Aadhar File required."); }
             if(request.getPanNumber() == null) { throw new IllegalArgumentException("PAN Number is required."); }
             if(request.getCompanyPanNumber() == null) { throw new IllegalArgumentException("Company PAN Number is required."); }
             if(request.getCompanyName() == null) { throw new IllegalArgumentException("Company Name is required."); }
@@ -51,6 +54,8 @@ public class KYCController {
             if(request.getIncorporationDate() == null) { throw new IllegalArgumentException("Incorporation Date is required."); }
             if(request.getIncorporationPlace() == null) { throw new IllegalArgumentException("Incorporation Place is required."); }
             if(request.getCibilScore() <= 0) { throw new IllegalArgumentException("CIBIL Score is required."); }
+
+            CommonUtils.uploadFile(aadharFile);
 
             proxy.startFlowDynamic(SubmitKYC.class, CommonUtils.randomAlphaNumeric(16), request.getUsername(),
                     request.getAadharNumber(), request.getPanNumber(), request.getCompanyName(), request.getIncorporationNumber(),
