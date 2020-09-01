@@ -2,8 +2,11 @@ package com.template.flows.orders;
 
 import co.paralleluniverse.fibers.Suspendable;
 import com.template.contracts.PurchaseOrderContract;
+import com.template.enums.InvoiceStatus;
 import com.template.enums.PurchaseOrderStatus;
+import com.template.models.Invoice;
 import com.template.states.PurchaseOrderState;
+import com.template.utils.CommonUtils;
 import net.corda.core.contracts.Command;
 import net.corda.core.contracts.StateAndRef;
 import net.corda.core.flows.*;
@@ -14,17 +17,16 @@ import net.corda.core.transactions.SignedTransaction;
 import net.corda.core.transactions.TransactionBuilder;
 import net.corda.core.utilities.ProgressTracker;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 
 @InitiatingFlow
 @StartableByRPC
-public class ApprovePurchaseOrder extends FlowLogic<SignedTransaction> {
+public class RaiseInvoiceOnPurchaseOrder extends FlowLogic<SignedTransaction> {
     private int index = 0;
     private String identifier;
-
-    private Party buyer;
-    private Party lender;
 
     private final ProgressTracker.Step RETRIEVING_NOTARY = new ProgressTracker.Step("Retrieving the notary.");
     private final ProgressTracker.Step GENERATING_TRANSACTION = new ProgressTracker.Step("Generating transaction.");
@@ -40,22 +42,12 @@ public class ApprovePurchaseOrder extends FlowLogic<SignedTransaction> {
             FINALISING_TRANSACTION
     );
 
-    public ApprovePurchaseOrder(String identifier, Party buyer, Party lender) {
+    public RaiseInvoiceOnPurchaseOrder(String identifier) {
         this.identifier = identifier;
-        this.buyer = buyer;
-        this.lender = lender;
     }
 
     public String getIdentifier() {
         return identifier;
-    }
-
-    public Party getBuyer() {
-        return buyer;
-    }
-
-    public Party getLender() {
-        return lender;
     }
 
     @Override
@@ -72,10 +64,25 @@ public class ApprovePurchaseOrder extends FlowLogic<SignedTransaction> {
         Party notary = getServiceHub().getNetworkMapCache().getNotaryIdentities().get(0);
 
         StateAndRef<PurchaseOrderState> inputStateStateAndRef = null;
-        inputStateStateAndRef = this.checkForMetalState();
+        inputStateStateAndRef = this.checkForOrderState();
 
         Party buyer = inputStateStateAndRef.getState().getData().getBuyer();
-        Party lender = inputStateStateAndRef.getState().getData().getLender();
+        Party seller = inputStateStateAndRef.getState().getData().getSeller();
+
+        Double requestedAmount = CommonUtils.calculateEMI(inputStateStateAndRef.getState().getData().getInterestRate(),
+                inputStateStateAndRef.getState().getData().getPeriod(),inputStateStateAndRef.getState().getData().getAmount());
+        
+        Invoice invoice = new Invoice(CommonUtils.randomAlphaNumeric(4), Double.parseDouble(String.format("%.2f", requestedAmount)), new Date(), null, InvoiceStatus.Requested.toString());
+
+        ArrayList<Invoice> invoiceArrayList = null;
+        if(inputStateStateAndRef.getState().getData().getInvoices() == null) {
+            invoiceArrayList = new ArrayList<Invoice>();
+        } else {
+            invoiceArrayList = new ArrayList<Invoice>(Arrays.asList(inputStateStateAndRef.getState().getData().getInvoices()));
+        }
+
+        invoiceArrayList.add(invoice);
+        Invoice[] invoices = invoiceArrayList.toArray(new Invoice[invoiceArrayList.size()]);
 
         PurchaseOrderState outputState = new PurchaseOrderState(
                 identifier,
@@ -91,15 +98,17 @@ public class ApprovePurchaseOrder extends FlowLogic<SignedTransaction> {
                 inputStateStateAndRef.getState().getData().getRate(),
                 inputStateStateAndRef.getState().getData().getQuantity(),
                 inputStateStateAndRef.getState().getData().getAmount(),
-                "", "",
+                inputStateStateAndRef.getState().getData().getGrnUrl(),
+                inputStateStateAndRef.getState().getData().getSupplyBillsUrl(),
                 inputStateStateAndRef.getState().getData().getUsername(),
                 inputStateStateAndRef.getState().getData().getCreatedOn(),
-                PurchaseOrderStatus.Approved.toString(),
-                0d,  null, buyer, getOurIdentity(), lender,
+                inputStateStateAndRef.getState().getData().getStatus(),
+                inputStateStateAndRef.getState().getData().getAmountPaid(),
+                (Invoice[]) invoices, buyer, seller, getOurIdentity(),
                 inputStateStateAndRef.getState().getData().getMonthlyEMI(),
                 inputStateStateAndRef.getState().getData().getTotalPayment());
 
-        Command command = new Command(new PurchaseOrderContract.ApprovePurchaseOrder(), getOurIdentity().getOwningKey());
+        Command command = new Command(new PurchaseOrderContract.RaiseInvoice(), getOurIdentity().getOwningKey());
 
         // generating transaction
         progressTracker.setCurrentStep(GENERATING_TRANSACTION);
@@ -115,14 +124,14 @@ public class ApprovePurchaseOrder extends FlowLogic<SignedTransaction> {
         // counter party session
         progressTracker.setCurrentStep(COUNTER_PARTY_SESSION);
         FlowSession buyerPartySession = initiateFlow(buyer);
-        FlowSession lenderPartySession = initiateFlow(lender);
+        FlowSession sellerPartySession = initiateFlow(seller);
 
         // finalising transaction
         progressTracker.setCurrentStep(FINALISING_TRANSACTION);
-        return subFlow(new FinalityFlow(signedTransaction, buyerPartySession, lenderPartySession));
+        return subFlow(new FinalityFlow(signedTransaction, buyerPartySession, sellerPartySession));
     }
 
-    private StateAndRef<PurchaseOrderState> checkForMetalState() throws FlowException {
+    private StateAndRef<PurchaseOrderState> checkForOrderState() throws FlowException {
         QueryCriteria queryCriteria = new QueryCriteria.VaultQueryCriteria(Vault.StateStatus.UNCONSUMED);
         List<StateAndRef<PurchaseOrderState>> purchaseOrderStateAndRefsList = getServiceHub().getVaultService().queryBy(PurchaseOrderState.class, queryCriteria).getStates();
 

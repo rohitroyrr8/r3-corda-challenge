@@ -76,7 +76,12 @@ public class RejectPurchaseOrder extends FlowLogic<SignedTransaction> {
         Party buyer = inputStateStateAndRef.getState().getData().getBuyer();
         Party lender = inputStateStateAndRef.getState().getData().getLender();
 
-        PurchaseOrderState outputState = new PurchaseOrderState(identifier,
+        PurchaseOrderState outputState = new PurchaseOrderState(
+                identifier,
+                inputStateStateAndRef.getState().getData().getInterestRate(),
+                inputStateStateAndRef.getState().getData().getPeriod(),
+                inputStateStateAndRef.getState().getData().getBuyerName(),
+                inputStateStateAndRef.getState().getData().getSellerName(),
                 inputStateStateAndRef.getState().getData().getName(),
                 inputStateStateAndRef.getState().getData().getModel(),
                 inputStateStateAndRef.getState().getData().getCompanyName(),
@@ -85,9 +90,13 @@ public class RejectPurchaseOrder extends FlowLogic<SignedTransaction> {
                 inputStateStateAndRef.getState().getData().getRate(),
                 inputStateStateAndRef.getState().getData().getQuantity(),
                 inputStateStateAndRef.getState().getData().getAmount(),
+                "", "",
                 inputStateStateAndRef.getState().getData().getUsername(),
                 inputStateStateAndRef.getState().getData().getCreatedOn(),
-                PurchaseOrderStatus.Received.toString(), 0d, buyer, getOurIdentity(), lender);
+                PurchaseOrderStatus.Rejected.toString(),
+                0d,  null, buyer, getOurIdentity(), lender,
+                inputStateStateAndRef.getState().getData().getMonthlyEMI(),
+                inputStateStateAndRef.getState().getData().getTotalPayment());
 
         Command command = new Command(new PurchaseOrderContract.ApprovePurchaseOrder(), getOurIdentity().getOwningKey());
 

@@ -21,9 +21,7 @@ import java.util.List;
 public class MarkReceivedPurchaseOrder extends FlowLogic<SignedTransaction> {
     private int index = 0;
     private String identifier;
-
-    private Party seller;
-    private Party lender;
+    private String grnUrl;
 
     private final ProgressTracker.Step RETRIEVING_NOTARY = new ProgressTracker.Step("Retrieving the notary.");
     private final ProgressTracker.Step GENERATING_TRANSACTION = new ProgressTracker.Step("Generating transaction.");
@@ -39,22 +37,17 @@ public class MarkReceivedPurchaseOrder extends FlowLogic<SignedTransaction> {
             FINALISING_TRANSACTION
     );
 
-    public MarkReceivedPurchaseOrder(String identifier, Party seller, Party lender) {
+    public MarkReceivedPurchaseOrder(String identifier, String grnUrl) {
         this.identifier = identifier;
-        this.seller = seller;
-        this.lender = lender;
+        this.grnUrl = grnUrl;
     }
 
     public String getIdentifier() {
         return identifier;
     }
 
-    public Party getBuyer() {
-        return seller;
-    }
-
-    public Party getLender() {
-        return lender;
+    public String getGrnUrl() {
+        return grnUrl;
     }
 
     @Override
@@ -76,7 +69,12 @@ public class MarkReceivedPurchaseOrder extends FlowLogic<SignedTransaction> {
         Party seller = inputStateStateAndRef.getState().getData().getSeller();
         Party lender = inputStateStateAndRef.getState().getData().getLender();
 
-        PurchaseOrderState outputState = new PurchaseOrderState(identifier,
+        PurchaseOrderState outputState = new PurchaseOrderState(
+                identifier,
+                inputStateStateAndRef.getState().getData().getInterestRate(),
+                inputStateStateAndRef.getState().getData().getPeriod(),
+                inputStateStateAndRef.getState().getData().getBuyerName(),
+                inputStateStateAndRef.getState().getData().getSellerName(),
                 inputStateStateAndRef.getState().getData().getName(),
                 inputStateStateAndRef.getState().getData().getModel(),
                 inputStateStateAndRef.getState().getData().getCompanyName(),
@@ -85,9 +83,15 @@ public class MarkReceivedPurchaseOrder extends FlowLogic<SignedTransaction> {
                 inputStateStateAndRef.getState().getData().getRate(),
                 inputStateStateAndRef.getState().getData().getQuantity(),
                 inputStateStateAndRef.getState().getData().getAmount(),
+                inputStateStateAndRef.getState().getData().getSupplyBillsUrl(),
+                grnUrl,
                 inputStateStateAndRef.getState().getData().getUsername(),
                 inputStateStateAndRef.getState().getData().getCreatedOn(),
-                PurchaseOrderStatus.Received.toString(), 0d, getOurIdentity(), seller, lender);
+                PurchaseOrderStatus.Received.toString(),
+                0d,  null, getOurIdentity(), seller, lender,
+                inputStateStateAndRef.getState().getData().getMonthlyEMI(),
+                inputStateStateAndRef.getState().getData().getTotalPayment());
+
 
         Command command = new Command(new PurchaseOrderContract.MarkAsReceivedPurchaseOrder(), getOurIdentity().getOwningKey());
 

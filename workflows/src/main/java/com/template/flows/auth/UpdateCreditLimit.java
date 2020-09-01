@@ -1,13 +1,10 @@
 package com.template.flows.auth;
 
 import co.paralleluniverse.fibers.Suspendable;
-import com.template.contracts.MetalContract;
 import com.template.contracts.UserContract;
-import com.template.states.MetalState;
 import com.template.states.UserState;
 import net.corda.core.contracts.Command;
 import net.corda.core.contracts.StateAndRef;
-import net.corda.core.contracts.TransactionState;
 import net.corda.core.flows.*;
 import net.corda.core.identity.Party;
 import net.corda.core.node.services.Vault;
@@ -21,10 +18,10 @@ import java.util.List;
 
 @InitiatingFlow
 @StartableByRPC
-public class Login extends FlowLogic<UserState> {
+public class UpdateCreditLimit extends FlowLogic<SignedTransaction> {
     private int index = 0;
     private String username;
-    private String password;
+    private Double updatedCreditLimit;
 
     private final ProgressTracker.Step RETRIEVING_NOTARY = new ProgressTracker.Step("Retrieving the notary.");
     private final ProgressTracker.Step GENERATING_TRANSACTION = new ProgressTracker.Step("Generating transaction.");
@@ -40,9 +37,9 @@ public class Login extends FlowLogic<UserState> {
             FINALISING_TRANSACTION
     );
 
-    public Login(String username, String password) {
+    public UpdateCreditLimit(String username, Double updatedCreditLimit) {
         this.username = username;
-        this.password = password;
+        this.updatedCreditLimit = updatedCreditLimit;
     }
 
     @Override
@@ -52,7 +49,7 @@ public class Login extends FlowLogic<UserState> {
 
     @Suspendable
     @Override
-    public UserState call() throws FlowException {
+    public SignedTransaction call() throws FlowException {
 
         // Retrieving notary identity
         progressTracker.setCurrentStep(RETRIEVING_NOTARY);
@@ -68,10 +65,9 @@ public class Login extends FlowLogic<UserState> {
         UserState transactionState = inputStateStateAndRef.getState().getData();
         UserState outputState = new UserState(transactionState.getIdentifier(), transactionState.getOrganisationName(),
                 transactionState.getCountry(), transactionState.getEmail(), transactionState.getUsername(), transactionState.getPassword(),
-                transactionState.getRegisteredAs(), transactionState.getStatus(), transactionState.getCreatedOn(), new Date(), buyer, seller, lender,
-                transactionState.getLastCreditLimit());
+                transactionState.getRegisteredAs(), transactionState.getStatus(), transactionState.getCreatedOn(), new Date(), buyer, seller, lender, updatedCreditLimit);
 
-        Command command = new Command(new UserContract.Login(), getOurIdentity().getOwningKey());
+        Command command = new Command(new UserContract.UpdateCreditLimit(), getOurIdentity().getOwningKey());
 
         // generating transaction
         progressTracker.setCurrentStep(GENERATING_TRANSACTION);
@@ -86,27 +82,13 @@ public class Login extends FlowLogic<UserState> {
 
         // counter party session
         progressTracker.setCurrentStep(COUNTER_PARTY_SESSION);
-        FlowSession party1Session = null;
-        FlowSession party2Session = null;
 
-        if(transactionState.getRegisteredAs().equals("Buyer")) {
-            party1Session = initiateFlow(seller);
-            party2Session = initiateFlow(lender);
-        } else if(transactionState.getRegisteredAs().equals("Seller")) {
-            party1Session = initiateFlow(buyer);
-            party2Session = initiateFlow(lender);
-        } else if(transactionState.getRegisteredAs().equals("Lender")) {
-            party1Session = initiateFlow(buyer);
-            party2Session = initiateFlow(seller);
-        }
+        FlowSession party1Session = initiateFlow(buyer);
+        FlowSession party2Session = initiateFlow(seller);
 
         // finalising transaction
         progressTracker.setCurrentStep(FINALISING_TRANSACTION);
-        subFlow(new FinalityFlow(signedTransaction, party1Session, party2Session));
-
-        return new UserState(transactionState.getIdentifier(), transactionState.getOrganisationName(),
-                transactionState.getCountry(), transactionState.getEmail(), transactionState.getUsername(), transactionState.getPassword(),
-                transactionState.getRegisteredAs(), transactionState.getStatus(), transactionState.getCreatedOn(), new Date(), null,null, null, transactionState.getLastCreditLimit());
+        return subFlow(new FinalityFlow(signedTransaction, party1Session, party2Session));
     }
 
     private StateAndRef<UserState> checkForUserState() throws FlowException {
@@ -115,8 +97,7 @@ public class Login extends FlowLogic<UserState> {
 
         boolean isFound = false;
         for(int i=0; i < userStateAndRefList.size(); i++) {
-            if(userStateAndRefList.get(i).getState().getData().getUsername().equals(username)
-            && userStateAndRefList.get(i).getState().getData().getPassword().equals(password)) {
+            if(userStateAndRefList.get(i).getState().getData().getUsername().equals(username)) {
                 isFound = true;
                 index = i;
                 break;

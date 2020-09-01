@@ -18,13 +18,12 @@ import java.util.List;
 
 @InitiatingFlow
 @StartableByRPC
-public class PayEMIForPurchaseOrder extends FlowLogic<SignedTransaction> {
+public class ConfirmPurchaseOrder extends FlowLogic<SignedTransaction> {
     private int index = 0;
     private String identifier;
-    private Double emiAmount;
 
+    private Party buyer;
     private Party seller;
-    private Party lender;
 
     private final ProgressTracker.Step RETRIEVING_NOTARY = new ProgressTracker.Step("Retrieving the notary.");
     private final ProgressTracker.Step GENERATING_TRANSACTION = new ProgressTracker.Step("Generating transaction.");
@@ -40,11 +39,10 @@ public class PayEMIForPurchaseOrder extends FlowLogic<SignedTransaction> {
             FINALISING_TRANSACTION
     );
 
-    public PayEMIForPurchaseOrder(String identifier, Double emiAmount, Party seller, Party lender) {
+    public ConfirmPurchaseOrder(String identifier, Party buyer, Party seller) {
         this.identifier = identifier;
-        this.emiAmount = emiAmount;
+        this.buyer = buyer;
         this.seller = seller;
-        this.lender = lender;
     }
 
     public String getIdentifier() {
@@ -52,15 +50,11 @@ public class PayEMIForPurchaseOrder extends FlowLogic<SignedTransaction> {
     }
 
     public Party getBuyer() {
+        return buyer;
+    }
+
+    public Party getSeler() {
         return seller;
-    }
-
-    public Party getLender() {
-        return lender;
-    }
-
-    public Double getEmiAmount() {
-        return emiAmount;
     }
 
     @Override
@@ -77,19 +71,17 @@ public class PayEMIForPurchaseOrder extends FlowLogic<SignedTransaction> {
         Party notary = getServiceHub().getNetworkMapCache().getNotaryIdentities().get(0);
 
         StateAndRef<PurchaseOrderState> inputStateStateAndRef = null;
-        inputStateStateAndRef = this.checkForMetalState();
+        inputStateStateAndRef = this.checkForPurchaseOrderState();
 
+        Party buyer = inputStateStateAndRef.getState().getData().getBuyer();
         Party seller = inputStateStateAndRef.getState().getData().getSeller();
-        Party lender = inputStateStateAndRef.getState().getData().getLender();
-        Double totalPaidAmount = inputStateStateAndRef.getState().getData().getAmountPaid() + emiAmount;
 
-        String status = null;
-        if(totalPaidAmount == inputStateStateAndRef.getState().getData().getAmount()) {
-            status = PurchaseOrderStatus.Approved.toString();
-        } else {
-            status = PurchaseOrderStatus.Received.toString();
-        }
-        PurchaseOrderState outputState = new PurchaseOrderState(identifier,
+        PurchaseOrderState outputState = new PurchaseOrderState(
+                identifier,
+                inputStateStateAndRef.getState().getData().getInterestRate(),
+                inputStateStateAndRef.getState().getData().getPeriod(),
+                inputStateStateAndRef.getState().getData().getBuyerName(),
+                inputStateStateAndRef.getState().getData().getSellerName(),
                 inputStateStateAndRef.getState().getData().getName(),
                 inputStateStateAndRef.getState().getData().getModel(),
                 inputStateStateAndRef.getState().getData().getCompanyName(),
@@ -98,11 +90,15 @@ public class PayEMIForPurchaseOrder extends FlowLogic<SignedTransaction> {
                 inputStateStateAndRef.getState().getData().getRate(),
                 inputStateStateAndRef.getState().getData().getQuantity(),
                 inputStateStateAndRef.getState().getData().getAmount(),
+                "", "",
                 inputStateStateAndRef.getState().getData().getUsername(),
                 inputStateStateAndRef.getState().getData().getCreatedOn(),
-                status, totalPaidAmount, getOurIdentity(), seller, lender);
+                PurchaseOrderStatus.Confirmed.toString(),
+                0d,  null, buyer, seller, getOurIdentity(),
+                inputStateStateAndRef.getState().getData().getMonthlyEMI(),
+                inputStateStateAndRef.getState().getData().getTotalPayment());
 
-        Command command = new Command(new PurchaseOrderContract.PayEMIForPurchasedOrder(), getOurIdentity().getOwningKey());
+        Command command = new Command(new PurchaseOrderContract.ConfirmPurchaseOrder(), getOurIdentity().getOwningKey());
 
         // generating transaction
         progressTracker.setCurrentStep(GENERATING_TRANSACTION);
@@ -117,15 +113,15 @@ public class PayEMIForPurchaseOrder extends FlowLogic<SignedTransaction> {
 
         // counter party session
         progressTracker.setCurrentStep(COUNTER_PARTY_SESSION);
-        FlowSession buyerPartySession = initiateFlow(seller);
-        FlowSession lenderPartySession = initiateFlow(lender);
+        FlowSession buyerPartySession = initiateFlow(buyer);
+        FlowSession sellerPartySession = initiateFlow(seller);
 
         // finalising transaction
         progressTracker.setCurrentStep(FINALISING_TRANSACTION);
-        return subFlow(new FinalityFlow(signedTransaction, buyerPartySession, lenderPartySession));
+        return subFlow(new FinalityFlow(signedTransaction, buyerPartySession, sellerPartySession));
     }
 
-    private StateAndRef<PurchaseOrderState> checkForMetalState() throws FlowException {
+    private StateAndRef<PurchaseOrderState> checkForPurchaseOrderState() throws FlowException {
         QueryCriteria queryCriteria = new QueryCriteria.VaultQueryCriteria(Vault.StateStatus.UNCONSUMED);
         List<StateAndRef<PurchaseOrderState>> purchaseOrderStateAndRefsList = getServiceHub().getVaultService().queryBy(PurchaseOrderState.class, queryCriteria).getStates();
 

@@ -23,14 +23,27 @@ public class KYCState implements ContractState {
     private String incorporationPlace;
     private int cibilScore;
 
-    private int creditLimit;
+    private String aadharUrl;
+    private String personalPANUrl;
+    private String companyPANUrl;
+    private String certificateOfIncorporationUrl;
+
+    private String lastYearStatement;
+    private String secondLastYearStatement;
+    private String thirdLastYearStatement;
+
+    private Double creditLimit;
     private String status;
     private Date createdOn;
 
     private Party owner;
     private Party lender;
 
-    public KYCState(String identifier, String username, String aadharNumber, String panNumber, String companyPanNumber, int incorporationNumber, String companyName, Date incorporationDate, String incorporationPlace, int cibilScore, int creditLimit, String status, Date createdOn, Party owner, Party lender) {
+    public KYCState(String identifier, String username, String aadharNumber, String panNumber, String companyPanNumber,
+                    int incorporationNumber, String companyName, Date incorporationDate, String incorporationPlace,
+                    int cibilScore, Double creditLimit, String status, Date createdOn, Party owner, Party lender,
+                    String aadharUrl, String personalPANUrl, String companyPANUrl, String certificateOfIncorporationUrl,
+                    String lastYearStatement, String secondLastYearStatement, String thirdLastYearStatement) {
         this.identifier = identifier;
         this.username = username;
         this.aadharNumber = aadharNumber;
@@ -46,6 +59,13 @@ public class KYCState implements ContractState {
         this.createdOn = createdOn;
         this.owner = owner;
         this.lender = lender;
+        this.personalPANUrl = personalPANUrl;
+        this.aadharUrl = aadharUrl;
+        this.companyPANUrl = companyPANUrl;
+        this.certificateOfIncorporationUrl = certificateOfIncorporationUrl;
+        this.lastYearStatement = lastYearStatement;
+        this.secondLastYearStatement = secondLastYearStatement;
+        this.thirdLastYearStatement = thirdLastYearStatement;
     }
 
     public String getIdentifier() {
@@ -88,7 +108,7 @@ public class KYCState implements ContractState {
         return cibilScore;
     }
 
-    public int getCreditLimit() {
+    public Double getCreditLimit() {
         return creditLimit;
     }
 
@@ -106,6 +126,42 @@ public class KYCState implements ContractState {
 
     public Party getLender() {
         return lender;
+    }
+
+    public void setOwner(Party owner) {
+        this.owner = owner;
+    }
+
+    public void setLender(Party lender) {
+        this.lender = lender;
+    }
+
+    public String getAadharUrl() {
+        return aadharUrl;
+    }
+
+    public String getPersonalPANUrl() {
+        return personalPANUrl;
+    }
+
+    public String getCompanyPANUrl() {
+        return companyPANUrl;
+    }
+
+    public String getCertificateOfIncorporationUrl() {
+        return certificateOfIncorporationUrl;
+    }
+
+    public String getLastYearStatement() {
+        return lastYearStatement;
+    }
+
+    public String getSecondLastYearStatement() {
+        return secondLastYearStatement;
+    }
+
+    public String getThirdLastYearStatement() {
+        return thirdLastYearStatement;
     }
 
     @Override

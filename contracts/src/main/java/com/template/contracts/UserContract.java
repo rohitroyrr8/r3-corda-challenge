@@ -53,7 +53,14 @@ public class UserContract implements Contract {
 
             // Signer Rule
 
-            Party currentParty = userState.getOwner();
+            Party currentParty = null;
+            if(userState.getRegisteredAs().equals("Buyer")) {
+                currentParty = userState.getBuyer();
+            } else if(userState.getRegisteredAs().equals("Seller")) {
+                currentParty = userState.getSeller();
+            } else if(userState.getRegisteredAs().equals("Lender")) {
+                currentParty = userState.getLender();
+            }
             PublicKey publicKey = currentParty.getOwningKey();
 
         if(!requiredSigners.contains(publicKey)) {
@@ -74,7 +81,33 @@ public class UserContract implements Contract {
             UserState userState = (UserState) inputState;
             if(userState.getStatus() == UserStaus.Disabled.toString()) { throw new IllegalArgumentException("This user is disabled."); }
 
-            Party currentParty = userState.getOwner();
+            Party currentParty = null;
+            if(userState.getRegisteredAs().equals("Buyer")) {
+                currentParty = userState.getBuyer();
+            } else if(userState.getRegisteredAs().equals("Seller")) {
+                currentParty = userState.getSeller();
+            } else if(userState.getRegisteredAs().equals("Lender")) {
+                currentParty = userState.getLender();
+            }
+            PublicKey publicKey = currentParty.getOwningKey();
+
+            if(!requiredSigners.contains(publicKey)) { throw new IllegalArgumentException("Authorised Party must sign the transaction."); }
+        }
+
+        else if(commandData instanceof UpdateCreditLimit) {
+            if(tx.getInputStates().size() != 1) { throw new IllegalArgumentException("Transaction must have one input state."); }
+            if(tx.getOutputStates().size() != 1) { throw new IllegalArgumentException("Transaction must have one output state."); }
+
+            // 2. Content Rule
+            ContractState inputState = tx.getInput(0);
+            ContractState outputState = tx.getOutput(0);
+
+            if(!(outputState instanceof UserState)) { throw new IllegalArgumentException("Output must be typeof UserState."); }
+
+            UserState userState = (UserState) inputState;
+            if(userState.getStatus() == UserStaus.Disabled.toString()) { throw new IllegalArgumentException("This user is disabled."); }
+
+            Party currentParty = userState.getLender();
             PublicKey publicKey = currentParty.getOwningKey();
 
             if(!requiredSigners.contains(publicKey)) { throw new IllegalArgumentException("Authorised Party must sign the transaction."); }
@@ -85,5 +118,6 @@ public class UserContract implements Contract {
 
     public static class SignUp implements CommandData {};
     public static class Login implements CommandData {};
+    public static class UpdateCreditLimit implements CommandData {};
 
 }

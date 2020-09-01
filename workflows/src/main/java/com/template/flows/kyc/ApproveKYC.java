@@ -23,6 +23,7 @@ import java.util.List;
 @StartableByRPC
 public class ApproveKYC extends FlowLogic<SignedTransaction> {
     private String identifier;
+    private Double creditLimit;
     private Party owner;
     private int index = 0;
 
@@ -40,8 +41,9 @@ public class ApproveKYC extends FlowLogic<SignedTransaction> {
             FINALISING_TRANSACTION
     );
 
-    public ApproveKYC(String identifier, Party owner) {
+   public ApproveKYC(String identifier, Double creditLimit, Party owner) {
         this.identifier = identifier;
+        this.creditLimit = creditLimit;
         this.owner = owner;
     }
 
@@ -55,6 +57,10 @@ public class ApproveKYC extends FlowLogic<SignedTransaction> {
 
     public int getIndex() {
         return index;
+    }
+
+    public Double getCreditLimit() {
+        return creditLimit;
     }
 
     @Override
@@ -85,9 +91,16 @@ public class ApproveKYC extends FlowLogic<SignedTransaction> {
                 inputStateStateAndRef.getState().getData().getIncorporationDate(),
                 inputStateStateAndRef.getState().getData().getIncorporationPlace(),
                 inputStateStateAndRef.getState().getData().getCibilScore(),
-                100000, KYCStatus.Approved.toString(),
+                creditLimit, KYCStatus.Approved.toString(),
                 inputStateStateAndRef.getState().getData().getCreatedOn(),
-                owner, getOurIdentity());
+                owner, getOurIdentity(),
+                inputStateStateAndRef.getState().getData().getAadharUrl(),
+                inputStateStateAndRef.getState().getData().getPersonalPANUrl(),
+                inputStateStateAndRef.getState().getData().getCompanyPANUrl(),
+                inputStateStateAndRef.getState().getData().getCertificateOfIncorporationUrl(),
+                inputStateStateAndRef.getState().getData().getLastYearStatement(),
+                inputStateStateAndRef.getState().getData().getSecondLastYearStatement(),
+                inputStateStateAndRef.getState().getData().getThirdLastYearStatement());
 
         Command command = new Command(new KYCContract.ApproveKYC(), getOurIdentity().getOwningKey());
 

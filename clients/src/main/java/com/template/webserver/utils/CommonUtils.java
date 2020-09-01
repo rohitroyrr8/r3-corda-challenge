@@ -6,13 +6,17 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.math.BigInteger;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 
 public class CommonUtils {
-    private static final String ALPHA_NUMERIC_STRING = "abcdefghijklmnopqrstuvwxyz0123456789";
+//    private static final String ALPHA_NUMERIC_STRING = "abcdefghijklmnopqrstuvwxyz0123456789";
+    private static final String ALPHA_NUMERIC_STRING = "0123456789";
     public static String randomAlphaNumeric(int count) {
         StringBuilder builder = new StringBuilder();
         while (count-- != 0) {
@@ -58,6 +62,34 @@ public class CommonUtils {
             e.printStackTrace();
             throw new Exception("Could not store file " + file.getOriginalFilename()
                     + ". Please try again!");
+        }
+    }
+
+    public static String hash(String input)
+    {
+        try {
+
+            // Static getInstance method is called with hashing MD5
+            MessageDigest md = MessageDigest.getInstance("MD5");
+
+            // digest() method is called to calculate message digest
+            //  of an input digest() return array of byte
+            byte[] messageDigest = md.digest(input.getBytes());
+
+            // Convert byte array into signum representation
+            BigInteger no = new BigInteger(1, messageDigest);
+
+            // Convert message digest into hex value
+            String hashtext = no.toString(16);
+            while (hashtext.length() < 32) {
+                hashtext = "0" + hashtext;
+            }
+            return hashtext;
+        }
+
+        // For specifying wrong message digest algorithms
+        catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
         }
     }
 }

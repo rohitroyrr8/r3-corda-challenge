@@ -25,13 +25,15 @@ public class UserState implements ContractState {
     private String status;
     private Date createdOn;
     private Date lastLoginOn;
+    private Double lastCreditLimit;
 
-    private Party owner;
+    private Party buyer;
+    private Party seller;
     private Party lender;
 
     public UserState(String identifier, String organisationName, String country,
                      String email, String username, String password, String registeredAs, String status,
-                     Date createdOn, Date lastLoginOn, Party owner, Party lender) {
+                     Date createdOn, Date lastLoginOn, Party buyer, Party seller, Party lender, Double lastCreditLimit) {
         this.identifier = identifier;
         this.organisationName = organisationName;
         this.country = country;
@@ -42,8 +44,10 @@ public class UserState implements ContractState {
         this.status = status;
         this.createdOn = createdOn;
         this.lastLoginOn = lastLoginOn;
-        this.owner = owner;
+        this.buyer = buyer;
+        this.seller = seller;
         this.lender = lender;
+        this.lastCreditLimit = lastCreditLimit;
     }
 
     public String getIdentifier() {
@@ -78,10 +82,6 @@ public class UserState implements ContractState {
         return createdOn;
     }
 
-    public Party getLender() {
-        return lender;
-    }
-
     public String getRegisteredAs() {
         return registeredAs;
     }
@@ -90,12 +90,36 @@ public class UserState implements ContractState {
         return lastLoginOn;
     }
 
-    public Party getOwner() {
-        return owner;
+    public Party getBuyer() {
+        return buyer;
+    }
+
+    public Party getSeller() {
+        return seller;
+    }
+
+    public Party getLender() {
+        return lender;
+    }
+
+    public Double getLastCreditLimit() {
+        return lastCreditLimit;
+    }
+
+    public void setBuyer(Party buyer) {
+        this.buyer = buyer;
+    }
+
+    public void setSeller(Party seller) {
+        this.seller = seller;
+    }
+
+    public void setLender(Party lender) {
+        this.lender = lender;
     }
 
     @Override
     public List<AbstractParty> getParticipants() {
-        return Arrays.asList(owner, lender);
+        return Arrays.asList(buyer, seller, lender);
     }
 }

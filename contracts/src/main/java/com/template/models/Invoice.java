@@ -1,7 +1,10 @@
-package com.template.webserver.models;
+package com.template.models;
+
+import net.corda.core.serialization.CordaSerializable;
 
 import java.util.Date;
 
+@CordaSerializable
 public class Invoice {
     private String identifier;
     private Double amount;
@@ -35,5 +38,25 @@ public class Invoice {
 
     public String getStatus() {
         return status;
+    }
+
+    public void setIdentifier(String identifier) {
+        this.identifier = identifier;
+    }
+
+    public void setAmount(Double amount) {
+        this.amount = amount;
+    }
+
+    public void setRequestedOn(Date requestedOn) {
+        this.requestedOn = requestedOn;
+    }
+
+    public void setPaidOn(Date paidOn) {
+        this.paidOn = paidOn;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 }

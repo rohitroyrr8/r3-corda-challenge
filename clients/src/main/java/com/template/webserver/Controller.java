@@ -8,6 +8,7 @@ import com.template.flows.IssueMetal;
 import com.template.flows.TransferMetal;
 import com.template.states.MetalState;
 import com.template.webserver.models.CordappResponse;
+import com.template.webserver.models.KYC;
 import com.template.webserver.models.Metal;
 import net.corda.core.contracts.StateAndRef;
 import net.corda.core.flows.FlowException;
@@ -17,18 +18,24 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
+import javax.annotation.Resource;
+import javax.servlet.http.HttpServletRequest;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
  * Define your API endpoints here.
  */
-@CrossOrigin(origins = "http://localhost:4200/", maxAge = 3600)
+@CrossOrigin(origins = "*", allowedHeaders = "*")
 @RestController
 @RequestMapping("/api/metal") // The paths for HTTP requests are relative to this base path.
 public class Controller {
@@ -133,6 +140,52 @@ public class Controller {
             return new ResponseEntity<CordappResponse<List<MetalState>>>(response, HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
+
+//    @PostMapping(value = "/upload")
+//    private ResponseEntity<CordappResponse<Void>> submitKYC(@RequestParam("file") MultipartFile file) throws Exception {
+//        CordappResponse<Void> response = new CordappResponse<Void>();
+//        try {
+//            String fileName = fileStorageService.storeFile(file);
+//
+//            String fileDownloadUri = ServletUriComponentsBuilder.fromCurrentContextPath()
+//                    .path("/downloadFile/")
+//                    .path(fileName)
+//                    .toUriString();
+//
+//           System.out.println(fileName);
+//            System.out.println(fileDownloadUri);
+//            System.out.println(file.getContentType());
+//            System.out.println(file.getSize());
+//            return null;
+//        } catch (Exception e) {
+//
+//        }
+//        return null;
+//    }
+
+//    @GetMapping("/downloadFile/{fileName:.+}")
+//    public ResponseEntity<Resource> downloadFile(@PathVariable String fileName, HttpServletRequest request) {
+//        // Load file as Resource
+//        Resource resource = fileStorageService.loadFileAsResource(fileName);
+//
+//        // Try to determine file's content type
+//        String contentType = null;
+//        try {
+//            contentType = request.getServletContext().getMimeType(resource.getFile().getAbsolutePath());
+//        } catch (IOException ex) {
+//            logger.info("Could not determine file type.");
+//        }
+//
+//        // Fallback to the default content type if type could not be determined
+//        if(contentType == null) {
+//            contentType = "application/octet-stream";
+//        }
+//
+//        return ResponseEntity.ok()
+//                .contentType(MediaType.parseMediaType(contentType))
+//                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + resource.getFilename() + "\"")
+//                .body(resource);
+//    }
 
 //    @PostMapping(value = "switch-party/{party}")
 //    public ResponseEntity<CordappResponse<Void>> switchParty(@PathVariable String party){

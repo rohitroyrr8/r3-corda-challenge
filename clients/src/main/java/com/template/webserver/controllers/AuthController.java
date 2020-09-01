@@ -3,6 +3,7 @@ package com.template.webserver.controllers;
 import com.template.flows.auth.Login;
 import com.template.flows.auth.SignUp;
 import com.template.flows.orders.ApprovePurchaseOrder;
+import com.template.states.UserState;
 import com.template.webserver.NodeRPCConnection;
 import com.template.webserver.models.CordappResponse;
 import com.template.webserver.models.Item;
@@ -18,9 +19,11 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import javax.naming.AuthenticationException;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 
-@CrossOrigin(origins = "http://localhost:4200/", maxAge = 3600)
+@CrossOrigin(origins = "*", allowedHeaders = "*")
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
@@ -34,25 +37,8 @@ public class AuthController {
         this.proxy = rpc.proxy;
     }
 
-//    @PostMapping(value = "/login", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-//    private ResponseEntity<CordappResponse<Void>> login(@RequestBody User userDetails) {
-//        CordappResponse<Void> response = new CordappResponse<Void>();
-//        try {
-//            if(!userDetails.getUsername().equals(this.username) || !userDetails.getPassword().equals(this.password)) {
-//                response.setMessage("Invalid Credentials. Please try again.");
-//                return new ResponseEntity<CordappResponse<Void>>(response, HttpStatus.UNAUTHORIZED);
-//            }
-//            response.setStatus(true);
-//            response.setMessage("Login Successful");
-//            return new ResponseEntity<CordappResponse<Void>>(response, HttpStatus.OK);
-//
-//        } catch (Exception e) {
-//            return new ResponseEntity<CordappResponse<Void>>(response, HttpStatus.INTERNAL_SERVER_ERROR);
-//        }
-//    }
-
     @PostMapping(value = "/signup", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    private ResponseEntity<CordappResponse<Void>> signup(@RequestBody User request) throws Exception {
+    private ResponseEntity<CordappResponse<Void>> signUp(@RequestBody User request) throws Exception {
         CordappResponse<Void> response = new CordappResponse<Void>();
         try {
             if(request.getOrganisationName() == null) { throw new IllegalArgumentException("Organisation name is required."); }
@@ -61,41 +47,19 @@ public class AuthController {
             if(request.getUsername() == null) { throw new IllegalArgumentException("Username name is required."); }
             if(request.getPassword() == null) { throw new IllegalArgumentException("Password name is required."); }
             if(request.getRegisteredAs() == null) { throw new IllegalArgumentException("Registered as is required."); }
-            if(!request.getRegisteredAs().equals("Buyer") && !request.getRegisteredAs().equals("Seller")) { throw new IllegalArgumentException("Invalid Party provided."); }
+
+            if(!request.getRegisteredAs().equals("Buyer") && !request.getRegisteredAs().equals("Seller") && !request.getRegisteredAs().equals("Lender")) {
+                throw new IllegalArgumentException("Invalid party provided,");
+            }
 
             proxy.startFlowDynamic(SignUp.class, CommonUtils.randomAlphaNumeric(16), request.getOrganisationName(),
-                    request.getCountry(), request.getEmail(), request.getUsername(), request.getPassword(),
-                    request.getRegisteredAs(), proxy.partiesFromName("Lender", false).iterator().next()).getReturnValue().get();
+                    request.getCountry(), request.getEmail(), request.getUsername(), CommonUtils.hash(request.getPassword()),
+                    request.getRegisteredAs(),
+                    proxy.partiesFromName("Buyer", false).iterator().next(),
+                    proxy.partiesFromName("Seller",false).iterator().next(),
+                    proxy.partiesFromName("Lender", false).iterator().next()).getReturnValue().get();
 
-            response.setMessage("User registered successfully.");
-            response.setStatus(true);
-            return new ResponseEntity<CordappResponse<Void>>(response, HttpStatus.OK);
-        } catch (Exception e) {
-            e.printStackTrace();
-            response.setMessage(e.getMessage());
-            if (e instanceof FlowException) {
-                response.setMessage(e.getMessage().substring(30));
-                return new ResponseEntity<CordappResponse<Void>>(response, HttpStatus.BAD_REQUEST);
-            }
-            return new ResponseEntity<CordappResponse<Void>>(response, HttpStatus.INTERNAL_SERVER_ERROR);
-        }
-    }
-
-    @PostMapping(value = "/login", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    private ResponseEntity<CordappResponse<Void>> login(@RequestBody User request) throws Exception {
-        CordappResponse<Void> response = new CordappResponse<Void>();
-        try {
-            if (request.getUsername() == null) {
-                throw new IllegalArgumentException("Username name is required.");
-            }
-            if (request.getPassword() == null) {
-                throw new IllegalArgumentException("Password name is required.");
-            }
-
-            proxy.startFlowDynamic(Login.class, request.getUsername(), request.getPassword()).getReturnValue().get();
-
-            response.setMessage("User loggedIn successfully.");
-            response.setStatus(true);
+            response.setMessage("user registered successfully.");
             return new ResponseEntity<CordappResponse<Void>>(response, HttpStatus.OK);
         } catch (Exception e) {
             e.printStackTrace();
@@ -104,6 +68,30 @@ public class AuthController {
                 return new ResponseEntity<CordappResponse<Void>>(response, HttpStatus.BAD_REQUEST);
             }
             return new ResponseEntity<CordappResponse<Void>>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    @PostMapping(value = "/login", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    private ResponseEntity<CordappResponse<UserState>> login(@RequestBody User request) throws Exception {
+        CordappResponse<UserState> response = new CordappResponse<UserState>();
+        try {
+            if (request.getUsername() == null) { throw new IllegalArgumentException("Username name is required."); }
+            if (request.getPassword() == null) { throw new IllegalArgumentException("Password name is required."); }
+            if (request.getRegisteredAs() == null) { throw new IllegalArgumentException("RegisteredAs name is required."); }
+
+            UserState output = proxy.startFlowDynamic(Login.class, request.getUsername(), CommonUtils.hash(request.getPassword())).getReturnValue().get();
+            System.out.println(output.toString());
+            if(!output.getRegisteredAs().equals(request.getRegisteredAs())) { throw new AuthenticationException("Invalid party selected."); }
+            response.setMessage("User logged-in successfully");
+            response.setData(output);
+            return new ResponseEntity<CordappResponse<UserState>>(response, HttpStatus.OK);
+        } catch (Exception e) {
+            e.printStackTrace();
+            if(e instanceof ExecutionException) { return new ResponseEntity<CordappResponse<UserState>>(response.error(e.getMessage()), HttpStatus.UNAUTHORIZED); }
+            if(e instanceof ExecutionException) { return new ResponseEntity<CordappResponse<UserState>>(response.error("Invalid username or password"), HttpStatus.BAD_REQUEST); }
+            if (e instanceof IllegalArgumentException) { return new ResponseEntity<CordappResponse<UserState>>(response.error(e.getMessage()), HttpStatus.BAD_REQUEST);  }
+            response.error("Something went wrong");
+            return new ResponseEntity<CordappResponse<UserState>>(response, HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 }

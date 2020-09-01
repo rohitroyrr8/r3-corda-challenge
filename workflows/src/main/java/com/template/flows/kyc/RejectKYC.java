@@ -82,9 +82,17 @@ public class RejectKYC extends FlowLogic<SignedTransaction> {
                 inputStateStateAndRef.getState().getData().getIncorporationDate(),
                 inputStateStateAndRef.getState().getData().getIncorporationPlace(),
                 inputStateStateAndRef.getState().getData().getCibilScore(),
-                100000, KYCStatus.Rejected.toString(),
+                inputStateStateAndRef.getState().getData().getCreditLimit(),
+                KYCStatus.Rejected.toString(),
                 inputStateStateAndRef.getState().getData().getCreatedOn(),
-                owner, getOurIdentity());
+                owner, getOurIdentity(),
+                inputStateStateAndRef.getState().getData().getAadharUrl(),
+                inputStateStateAndRef.getState().getData().getPersonalPANUrl(),
+                inputStateStateAndRef.getState().getData().getCompanyPANUrl(),
+                inputStateStateAndRef.getState().getData().getCertificateOfIncorporationUrl(),
+                inputStateStateAndRef.getState().getData().getLastYearStatement(),
+                inputStateStateAndRef.getState().getData().getSecondLastYearStatement(),
+                inputStateStateAndRef.getState().getData().getThirdLastYearStatement());
 
         Command command = new Command(new KYCContract.ApproveKYC(), getOurIdentity().getOwningKey());
 

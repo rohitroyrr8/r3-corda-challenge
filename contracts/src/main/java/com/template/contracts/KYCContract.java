@@ -58,9 +58,9 @@ public class KYCContract implements Contract {
             if(kycState.getIncorporationPlace() == null) { throw new IllegalArgumentException("Incorporation Place is required."); }
             if(kycState.getCibilScore() <= 0) { throw new IllegalArgumentException("CIBIL Score is required."); }
 
-            if (kycState.getCibilScore() < 750) {
-                throw new IllegalArgumentException("KYC is rejected as CIBIL Score is less than 750.");
-            }
+//            if (kycState.getCibilScore() < 750) {
+//                throw new IllegalArgumentException("KYC is rejected as CIBIL Score is less than 750.");
+//            }
             // Signer Rule
             Party submittedBy = kycState.getOwner();
             PublicKey submitterKey = submittedBy.getOwningKey();

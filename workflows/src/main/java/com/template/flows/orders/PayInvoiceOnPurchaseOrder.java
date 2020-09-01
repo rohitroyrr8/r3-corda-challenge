@@ -2,8 +2,11 @@ package com.template.flows.orders;
 
 import co.paralleluniverse.fibers.Suspendable;
 import com.template.contracts.PurchaseOrderContract;
+import com.template.enums.InvoiceStatus;
 import com.template.enums.PurchaseOrderStatus;
+import com.template.models.Invoice;
 import com.template.states.PurchaseOrderState;
+import com.template.utils.CommonUtils;
 import net.corda.core.contracts.Command;
 import net.corda.core.contracts.StateAndRef;
 import net.corda.core.flows.*;
@@ -14,17 +17,16 @@ import net.corda.core.transactions.SignedTransaction;
 import net.corda.core.transactions.TransactionBuilder;
 import net.corda.core.utilities.ProgressTracker;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 
 @InitiatingFlow
 @StartableByRPC
-public class ApprovePurchaseOrder extends FlowLogic<SignedTransaction> {
+public class PayInvoiceOnPurchaseOrder extends FlowLogic<SignedTransaction> {
     private int index = 0;
     private String identifier;
-
-    private Party buyer;
-    private Party lender;
 
     private final ProgressTracker.Step RETRIEVING_NOTARY = new ProgressTracker.Step("Retrieving the notary.");
     private final ProgressTracker.Step GENERATING_TRANSACTION = new ProgressTracker.Step("Generating transaction.");
@@ -40,22 +42,12 @@ public class ApprovePurchaseOrder extends FlowLogic<SignedTransaction> {
             FINALISING_TRANSACTION
     );
 
-    public ApprovePurchaseOrder(String identifier, Party buyer, Party lender) {
+    public PayInvoiceOnPurchaseOrder(String identifier) {
         this.identifier = identifier;
-        this.buyer = buyer;
-        this.lender = lender;
     }
 
     public String getIdentifier() {
         return identifier;
-    }
-
-    public Party getBuyer() {
-        return buyer;
-    }
-
-    public Party getLender() {
-        return lender;
     }
 
     @Override
@@ -72,10 +64,25 @@ public class ApprovePurchaseOrder extends FlowLogic<SignedTransaction> {
         Party notary = getServiceHub().getNetworkMapCache().getNotaryIdentities().get(0);
 
         StateAndRef<PurchaseOrderState> inputStateStateAndRef = null;
-        inputStateStateAndRef = this.checkForMetalState();
+        inputStateStateAndRef = this.checkForOrderState();
 
-        Party buyer = inputStateStateAndRef.getState().getData().getBuyer();
+        Party seller = inputStateStateAndRef.getState().getData().getSeller();
         Party lender = inputStateStateAndRef.getState().getData().getLender();
+
+        Invoice[] invoices = inputStateStateAndRef.getState().getData().getInvoices();
+        if(invoices == null || invoices.length < 1) { throw new FlowException("No Invoice found."); }
+
+        Invoice invoice = invoices[invoices.length-1];
+        invoice.setStatus(InvoiceStatus.Paid.toString());
+        invoice.setPaidOn(new Date());
+        invoices[invoices.length-1] = invoice;
+
+        Double paidAmount = inputStateStateAndRef.getState().getData().getAmountPaid() + invoice.getAmount();
+
+        String orderStatus = inputStateStateAndRef.getState().getData().getStatus();
+        if(paidAmount >= inputStateStateAndRef.getState().getData().getTotalPayment()) {
+            orderStatus = PurchaseOrderStatus.Closed.toString();
+        }
 
         PurchaseOrderState outputState = new PurchaseOrderState(
                 identifier,
@@ -91,15 +98,16 @@ public class ApprovePurchaseOrder extends FlowLogic<SignedTransaction> {
                 inputStateStateAndRef.getState().getData().getRate(),
                 inputStateStateAndRef.getState().getData().getQuantity(),
                 inputStateStateAndRef.getState().getData().getAmount(),
-                "", "",
+                inputStateStateAndRef.getState().getData().getGrnUrl(),
+                inputStateStateAndRef.getState().getData().getSupplyBillsUrl(),
                 inputStateStateAndRef.getState().getData().getUsername(),
                 inputStateStateAndRef.getState().getData().getCreatedOn(),
-                PurchaseOrderStatus.Approved.toString(),
-                0d,  null, buyer, getOurIdentity(), lender,
+                orderStatus, paidAmount, invoices,
+                getOurIdentity(), seller, lender,
                 inputStateStateAndRef.getState().getData().getMonthlyEMI(),
                 inputStateStateAndRef.getState().getData().getTotalPayment());
 
-        Command command = new Command(new PurchaseOrderContract.ApprovePurchaseOrder(), getOurIdentity().getOwningKey());
+        Command command = new Command(new PurchaseOrderContract.PayInvoice(), getOurIdentity().getOwningKey());
 
         // generating transaction
         progressTracker.setCurrentStep(GENERATING_TRANSACTION);
@@ -114,15 +122,15 @@ public class ApprovePurchaseOrder extends FlowLogic<SignedTransaction> {
 
         // counter party session
         progressTracker.setCurrentStep(COUNTER_PARTY_SESSION);
-        FlowSession buyerPartySession = initiateFlow(buyer);
+        FlowSession sellerPartySession = initiateFlow(seller);
         FlowSession lenderPartySession = initiateFlow(lender);
 
         // finalising transaction
         progressTracker.setCurrentStep(FINALISING_TRANSACTION);
-        return subFlow(new FinalityFlow(signedTransaction, buyerPartySession, lenderPartySession));
+        return subFlow(new FinalityFlow(signedTransaction, sellerPartySession, lenderPartySession));
     }
 
-    private StateAndRef<PurchaseOrderState> checkForMetalState() throws FlowException {
+    private StateAndRef<PurchaseOrderState> checkForOrderState() throws FlowException {
         QueryCriteria queryCriteria = new QueryCriteria.VaultQueryCriteria(Vault.StateStatus.UNCONSUMED);
         List<StateAndRef<PurchaseOrderState>> purchaseOrderStateAndRefsList = getServiceHub().getVaultService().queryBy(PurchaseOrderState.class, queryCriteria).getStates();
 

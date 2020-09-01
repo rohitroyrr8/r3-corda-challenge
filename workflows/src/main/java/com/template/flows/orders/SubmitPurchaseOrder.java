@@ -4,6 +4,7 @@ import co.paralleluniverse.fibers.Suspendable;
 import com.template.contracts.PurchaseOrderContract;
 import com.template.enums.PurchaseOrderStatus;
 import com.template.states.PurchaseOrderState;
+import com.template.utils.CommonUtils;
 import net.corda.core.contracts.Command;
 import net.corda.core.flows.*;
 import net.corda.core.identity.Party;
@@ -17,6 +18,10 @@ import java.util.Date;
 @StartableByRPC
 public class SubmitPurchaseOrder extends FlowLogic<SignedTransaction> {
     private String identifier;
+    private int interestRate;
+    private int period;
+    private String buyerName;
+    private String sellerName;
     private String name;
     private String model;
     private String companyName;
@@ -44,8 +49,12 @@ public class SubmitPurchaseOrder extends FlowLogic<SignedTransaction> {
             FINALISING_TRANSACTION
     );
 
-    public SubmitPurchaseOrder(String identifier, String name, String model, String companyName, String color, String fuelType, Double rate, int quantity, Double amount, String username, Party seller, Party lender) {
+    public SubmitPurchaseOrder(String identifier, int interestRate, int period, String buyerUsername, String sellerUsername, String name, String model, String companyName, String color, String fuelType, Double rate, int quantity, Double amount, String username, Party seller, Party lender) {
         this.identifier = identifier;
+        this.interestRate = interestRate;
+        this.period = period;
+        this.buyerName = buyerUsername;
+        this.sellerName = sellerUsername;
         this.name = name;
         this.model = model;
         this.companyName = companyName;
@@ -107,6 +116,22 @@ public class SubmitPurchaseOrder extends FlowLogic<SignedTransaction> {
         return lender;
     }
 
+    public int getInterestRate() {
+        return interestRate;
+    }
+
+    public int getPeriod() {
+        return period;
+    }
+
+    public String getBuyerUsername() {
+        return buyerName;
+    }
+
+    public String getSellerUsername() {
+        return sellerName;
+    }
+
     @Override
     public ProgressTracker getProgressTracker() {
         return progressTracker;
@@ -120,8 +145,14 @@ public class SubmitPurchaseOrder extends FlowLogic<SignedTransaction> {
         progressTracker.setCurrentStep(RETRIEVING_NOTARY);
         Party notary = getServiceHub().getNetworkMapCache().getNotaryIdentities().get(0);
 
-        PurchaseOrderState outputState = new PurchaseOrderState(identifier, name, model, companyName, color, fuelType, rate,
-                quantity, amount, username, new Date(), PurchaseOrderStatus.Submitted.toString(), 0d, getOurIdentity(), seller, lender);
+        // calculating monthly EMI and total payable amount
+        Double monthlyEMI = CommonUtils.calculateEMI(interestRate, period, amount);
+        Double totalPayment = monthlyEMI*period*12;
+
+        PurchaseOrderState outputState = new PurchaseOrderState(identifier, interestRate, period, buyerName, sellerName,
+                name, model, companyName, color, fuelType, rate, quantity, amount, "", "", username,
+                new Date(), PurchaseOrderStatus.Submitted.toString(), 0d, null, getOurIdentity(),
+                seller, lender, Double.parseDouble(String.format("%.2f", monthlyEMI)), Double.parseDouble(String.format("%.2f", totalPayment)));
 
         Command command = new Command(new PurchaseOrderContract.SubmitPurchaseOrder(), getOurIdentity().getOwningKey());
 

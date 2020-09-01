@@ -30,6 +30,8 @@ public class SignUp extends FlowLogic<SignedTransaction> {
     private String password; // need to be hashed
     private String registeredAs;
 
+    private Party buyer;
+    private Party seller;
     private Party lender;
 
     private final ProgressTracker.Step RETRIEVING_NOTARY = new ProgressTracker.Step("Retrieving the notary.");
@@ -46,7 +48,7 @@ public class SignUp extends FlowLogic<SignedTransaction> {
             FINALISING_TRANSACTION
     );
 
-    public SignUp(String identifier, String organisationName, String country, String email, String username, String password, String registeredAs, Party lender) {
+    public SignUp(String identifier, String organisationName, String country, String email, String username, String password, String registeredAs, Party buyer, Party seller, Party lender) {
         this.identifier = identifier;
         this.organisationName = organisationName;
         this.country = country;
@@ -54,6 +56,8 @@ public class SignUp extends FlowLogic<SignedTransaction> {
         this.username = username;
         this.password = password;
         this.registeredAs = registeredAs;
+        this.buyer = buyer;
+        this.seller = seller;
         this.lender = lender;
     }
 
@@ -89,6 +93,14 @@ public class SignUp extends FlowLogic<SignedTransaction> {
         return identifier;
     }
 
+    public Party getBuyer() {
+        return buyer;
+    }
+
+    public Party getSeller() {
+        return seller;
+    }
+
     @Override
     public ProgressTracker getProgressTracker() {
         return progressTracker;
@@ -103,9 +115,16 @@ public class SignUp extends FlowLogic<SignedTransaction> {
         Party notary = getServiceHub().getNetworkMapCache().getNotaryIdentities().get(0);
 
         UserState outputState = new UserState(identifier, organisationName, country, email, username,
-                password, registeredAs, UserStaus.Active.toString(), new Date(), null, getOurIdentity(), lender);
+                password, registeredAs, UserStaus.Active.toString(), new Date(), null, buyer, seller, lender, 0d);
 
-        Command command = new Command(new UserContract.SignUp(), getOurIdentity().getOwningKey());
+        Command command = null;
+        if(outputState.getRegisteredAs().equals("Buyer")) {
+            command = new Command(new UserContract.SignUp(), buyer.getOwningKey());
+        } else if(outputState.getRegisteredAs().equals("Seller")) {
+            command = new Command(new UserContract.SignUp(), seller.getOwningKey());
+        } else if(outputState.getRegisteredAs().equals("Lender")) {
+            command = new Command(new UserContract.SignUp(), lender.getOwningKey());
+        }
 
         // generating transaction
         progressTracker.setCurrentStep(GENERATING_TRANSACTION);
@@ -120,10 +139,21 @@ public class SignUp extends FlowLogic<SignedTransaction> {
         // counter party session
         progressTracker.setCurrentStep(COUNTER_PARTY_SESSION);
 
-        FlowSession lenderPartySession = initiateFlow(lender);
+        FlowSession party1Session = null;
+        FlowSession party2Session = null;
+        if(outputState.getRegisteredAs().equals("Buyer")) {
+            party1Session = initiateFlow(seller);
+            party2Session = initiateFlow(lender);
+        } else if(outputState.getRegisteredAs().equals("Seller")) {
+            party1Session = initiateFlow(buyer);
+            party2Session = initiateFlow(lender);
+        } else if(outputState.getRegisteredAs().equals("Lender")) {
+            party1Session = initiateFlow(buyer);
+            party2Session = initiateFlow(seller);
+        }
 
         // finalising transaction
         progressTracker.setCurrentStep(FINALISING_TRANSACTION);
-        return subFlow(new FinalityFlow(signedTransaction, lenderPartySession));
+        return subFlow(new FinalityFlow(signedTransaction, party1Session, party2Session));
     }
 }

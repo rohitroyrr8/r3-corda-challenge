@@ -1,9 +1,16 @@
 package com.template.webserver.models;
 
+import com.template.models.Invoice;
+
 import java.util.Date;
 
 public class PurchaseOrder {
     private String identifier;
+
+    private int interestRate;
+    private int period;
+    private String buyerName;
+    private String sellerName;
     private String name;
     private String model;
     private String companyName;
@@ -12,17 +19,23 @@ public class PurchaseOrder {
     private Double rate;
     private int quantity;
     private Double amount;
-    private String sellerName;
-    private String buyerName; // buyer name and seller name need to be added in purchaseOrder state and remove username
+
+    private String supplyBillsUrl;
+    private String grnUrl;
 
     private String username;
     private Date createdOn;
     private String status;
     private Double amountPaid;
 
-    public PurchaseOrder(String identifier, String name, String model, String companyName, String color, String fuelType,
-                         Double rate, int quantity, Double amount, String username, Date createdOn, String status, Double amountPaid, String sellerName, String buyerName) {
+    private Invoice[] invoices;
+
+    public PurchaseOrder(String identifier, int interestRate, int period, String buyerName, String sellerName, String name, String model, String companyName, String color, String fuelType, Double rate, int quantity, Double amount, String supplyBillsUrl, String grnUrl, String username, Date createdOn, String status, Double amountPaid, Invoice[] invoices) {
         this.identifier = identifier;
+        this.interestRate = interestRate;
+        this.period = period;
+        this.buyerName = buyerName;
+        this.sellerName = sellerName;
         this.name = name;
         this.model = model;
         this.companyName = companyName;
@@ -31,16 +44,33 @@ public class PurchaseOrder {
         this.rate = rate;
         this.quantity = quantity;
         this.amount = amount;
+        this.supplyBillsUrl = supplyBillsUrl;
+        this.grnUrl = grnUrl;
+        this.username = username;
         this.createdOn = createdOn;
         this.status = status;
         this.amountPaid = amountPaid;
-        this.sellerName = sellerName;
-        this.buyerName = buyerName;
-        this.username = username;
+        this.invoices = invoices;
     }
 
     public String getIdentifier() {
         return identifier;
+    }
+
+    public int getInterestRate() {
+        return interestRate;
+    }
+
+    public int getPeriod() {
+        return period;
+    }
+
+    public String getBuyerName() {
+        return buyerName;
+    }
+
+    public String getSellerName() {
+        return sellerName;
     }
 
     public String getName() {
@@ -75,6 +105,18 @@ public class PurchaseOrder {
         return amount;
     }
 
+    public String getSupplyBillsUrl() {
+        return supplyBillsUrl;
+    }
+
+    public String getGrnUrl() {
+        return grnUrl;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
     public Date getCreatedOn() {
         return createdOn;
     }
@@ -87,15 +129,7 @@ public class PurchaseOrder {
         return amountPaid;
     }
 
-    public String getSellerName() {
-        return sellerName;
-    }
-
-    public String getBuyerName() {
-        return buyerName;
-    }
-
-    public String getUsername() {
-        return username;
+    public Invoice[] getInvoices() {
+        return invoices;
     }
 }

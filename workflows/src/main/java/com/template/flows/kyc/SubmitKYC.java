@@ -27,8 +27,16 @@ public class SubmitKYC extends FlowLogic<SignedTransaction> {
     private Date incorporationDate;
     private String incorporationPlace;
     private int cibilScore;
+    private Double creditLimit;
 
     private Party lender;
+    private String aadharUrl;
+    private String personalPANUrl;
+    private String companyPANUrl;
+    private String certificateOfIncorporationUrl;
+    private String lastYearStatement;
+    private String secondLastYearStatement;
+    private String thirdLastYearStatement;
 
     private final ProgressTracker.Step RETRIEVING_NOTARY = new ProgressTracker.Step("Retrieving the notary.");
     private final ProgressTracker.Step GENERATING_TRANSACTION = new ProgressTracker.Step("Generating transaction.");
@@ -44,9 +52,11 @@ public class SubmitKYC extends FlowLogic<SignedTransaction> {
             FINALISING_TRANSACTION
     );
 
-    public SubmitKYC(String identifier , String username, String aadharNumber, String panNumber, String companyPanNumber, int incorporationNumber,
-                     String companyName, Date incorporationDate, String incorporationPlace, int cibilScore,
-                     Party lender) {
+    public SubmitKYC(String identifier, String username, String aadharNumber, String panNumber, String companyPanNumber,
+                     int incorporationNumber, String companyName, Date incorporationDate, String incorporationPlace,
+                     int cibilScore, Double creditLimit, Party lender, String aadharUrl, String personalPANUrl,
+                     String companyPANUrl, String certificateOfIncorporationUrl, String lastYearStatement,
+                     String secondLastYearStatement, String thirdLastYearStatement) {
         this.identifier = identifier;
         this.username = username;
         this.aadharNumber = aadharNumber;
@@ -57,7 +67,15 @@ public class SubmitKYC extends FlowLogic<SignedTransaction> {
         this.incorporationDate = incorporationDate;
         this.incorporationPlace = incorporationPlace;
         this.cibilScore = cibilScore;
+        this.creditLimit = creditLimit;
         this.lender = lender;
+        this.aadharUrl = aadharUrl;
+        this.personalPANUrl = personalPANUrl;
+        this.companyPANUrl = companyPANUrl;
+        this.certificateOfIncorporationUrl = certificateOfIncorporationUrl;
+        this.lastYearStatement = lastYearStatement;
+        this.secondLastYearStatement = secondLastYearStatement;
+        this.thirdLastYearStatement = thirdLastYearStatement;
     }
 
     public String getIdentifier() {
@@ -104,6 +122,38 @@ public class SubmitKYC extends FlowLogic<SignedTransaction> {
         return lender;
     }
 
+    public Double getCreditLimit() {
+        return creditLimit;
+    }
+
+    public String getAadharUrl() {
+        return aadharUrl;
+    }
+
+    public String getPersonalPANUrl() {
+        return personalPANUrl;
+    }
+
+    public String getCompanyPANUrl() {
+        return companyPANUrl;
+    }
+
+    public String getCertificateOfIncorporationUrl() {
+        return certificateOfIncorporationUrl;
+    }
+
+    public String getLastYearStatement() {
+        return lastYearStatement;
+    }
+
+    public String getSecondLastYearStatement() {
+        return secondLastYearStatement;
+    }
+
+    public String getThirdLastYearStatement() {
+        return thirdLastYearStatement;
+    }
+
     @Nullable
     @Override
     public ProgressTracker getProgressTracker() {
@@ -121,8 +171,9 @@ public class SubmitKYC extends FlowLogic<SignedTransaction> {
         //String identifier = CommonUtils.randomAlphaNumeric(16);
         KYCState outputState = new KYCState(identifier, username,
                 aadharNumber, panNumber, companyPanNumber, incorporationNumber,
-                companyName, incorporationDate, incorporationPlace, cibilScore, 0, KYCStatus.Submitted.toString(),
-                new Date(), getOurIdentity(), lender);
+                companyName, incorporationDate, incorporationPlace, cibilScore, creditLimit, KYCStatus.Submitted.toString(),
+                new Date(), getOurIdentity(), lender, aadharUrl, personalPANUrl, companyPANUrl, certificateOfIncorporationUrl,
+                lastYearStatement, secondLastYearStatement, thirdLastYearStatement);
 
         Command command = new Command(new KYCContract.SubmitKYC(), getOurIdentity().getOwningKey());
 
