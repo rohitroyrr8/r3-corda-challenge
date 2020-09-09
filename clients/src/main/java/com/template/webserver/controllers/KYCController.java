@@ -24,6 +24,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -90,16 +91,23 @@ public class KYCController {
     }
 
     @PostMapping(value = "/approve", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    private ResponseEntity<CordappResponse<Void>> approveKYC(@RequestBody KYCState request) throws Exception {
+    private ResponseEntity<CordappResponse<Void>> approveKYC(@RequestBody KYC request) throws Exception {
         CordappResponse<Void> response = new CordappResponse<Void>();
         try {
             if(request.getIdentifier() == null) { throw new IllegalArgumentException("Identifier name is required."); }
-            if(request.getCreditLimit() == null) { throw new IllegalArgumentException("Credit Limit is required."); }
+            if(request.getCreditLimit() <= 0) { throw new IllegalArgumentException("Credit Limit is required."); }
             if(request.getUsername() == null) { throw new IllegalArgumentException("Username is required."); }
 
-            proxy.startFlowDynamic(ApproveKYC.class, request.getIdentifier(), request.getCreditLimit(), proxy.partiesFromName("Buyer", false).iterator().next()).getReturnValue().get();
+            DecimalFormat decimalFormat = new DecimalFormat("0.00");
+
+            proxy.startFlowDynamic(ApproveKYC.class, request.getIdentifier(), Double.parseDouble(decimalFormat.format(request.getCreditLimit())), proxy.partiesFromName("Buyer", false).iterator().next()).getReturnValue().get();
             // update approved credit limit in user object
-            proxy.startFlowDynamic(UpdateCreditLimit.class, request.getUsername(), request.getCreditLimit()).getReturnValue().get();
+            System.out.println("in approve kyc");
+            System.out.println(request.getCreditLimit());
+            System.out.println(request.getIdentifier());
+            System.out.println(request.getUsername());
+            System.out.println(Double.parseDouble(decimalFormat.format(request.getCreditLimit())));
+            proxy.startFlowDynamic(UpdateCreditLimit.class, request.getUsername(), Double.parseDouble(decimalFormat.format(request.getCreditLimit()))).getReturnValue().get();
 
             response.setMessage("KYC approved successfully.");
             response.setStatus(true);
